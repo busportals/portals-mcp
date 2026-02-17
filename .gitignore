@@ -1,0 +1,17 @@
+# Environment
+.env
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Claude Code (user-specific)
+.claude/
+
+# User game projects (created per room, contain local data)
+games/*/

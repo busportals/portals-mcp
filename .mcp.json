@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "portals": {
+      "command": "npx",
+      "args": ["portals-mcp"]
+    }
+  }
+}
