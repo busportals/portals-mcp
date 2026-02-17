@@ -60,13 +60,11 @@ def build_{name}(items, logic, next_id, **kwargs):
 """
 from portals_core import create_cube, create_trigger
 from portals_effects import (
-    basic_interaction, quest_effector, quest_trigger,
-    add_task_to_logic,
+    Quest, basic_interaction, add_task_to_logic,
     trigger_on_enter, trigger_on_click,
-    effector_hide, effector_show, effector_run_triggers,
-    effector_function
+    effector_hide, effector_show, effector_notification,
+    effector_play_sound_once, effector_run_triggers
 )
-from portals_utils import create_quest_pair
 
 
 def build_{name}(items, logic, quests, next_id, **kwargs):
@@ -88,11 +86,8 @@ def build_{name}(items, logic, quests, next_id, **kwargs):
     refs = {}
 
     # --- Quest setup ---
-    q = create_quest_pair(
-        number=start_quest_num, name_suffix="example",
-        creator=creator, multiplayer=False
-    )
-    quests.update(q["entries"])
+    q = Quest(start_quest_num, "example", creator)
+    quests.update(q.entries)
     refs["quest_num"] = start_quest_num + 1  # next available quest number
 
     # --- Items with quest-driven logic ---
@@ -100,10 +95,18 @@ def build_{name}(items, logic, quests, next_id, **kwargs):
     id_ = next_id()
     items[id_], logic[id_] = create_cube(pos=(0, 0.5, 0))
 
-    # Quest-driven effect: hide cube when quest completes
-    add_task_to_logic(logic[id_], quest_effector(
-        q["progress_id"], q["name"], 2, effector_hide()
-    ))
+    # Single quest-driven effect: hide cube when quest completes
+    q.effector(logic[id_], 2, effector_hide())
+
+    # Multiple effects on the same quest state:
+    # q.on_state(logic[id_], 2, [
+    #     effector_hide(),
+    #     effector_notification("Done!", "00FF00"),
+    #     effector_play_sound_once("https://example.com/win.mp3"),
+    # ])
+
+    # Trigger that advances quest on click:
+    # q.trigger(logic[btn_id], 181, trigger_on_click())
 
     # ...
 
@@ -180,13 +183,11 @@ Use when a component only wires interactions and quests onto items that already 
 {One-line description — wires interactions on existing items}
 """
 from portals_effects import (
-    basic_interaction, quest_effector, quest_trigger,
-    add_task_to_logic,
+    Quest, basic_interaction, add_task_to_logic,
     trigger_on_click, trigger_on_enter,
     effector_hide, effector_show, effector_notification,
     effector_play_sound_once, effector_run_triggers
 )
-from portals_utils import create_quest_pair
 
 
 def build_{name}_logic(logic, quests, item_refs, **kwargs):
@@ -210,11 +211,8 @@ def build_{name}_logic(logic, quests, item_refs, **kwargs):
     refs = {}
 
     # --- Quest setup ---
-    q = create_quest_pair(
-        number=start_quest_num, name_suffix="activate",
-        creator=creator, multiplayer=False
-    )
-    quests.update(q["entries"])
+    q = Quest(start_quest_num, "activate", creator)
+    quests.update(q.entries)
     refs["quest_num"] = start_quest_num + 1
 
     # --- Wire interactions onto existing items ---

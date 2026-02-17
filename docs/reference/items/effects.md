@@ -130,16 +130,19 @@ All `contentString` values use the `FurnitureAddressables/` prefix.
 ## Python Generator
 
 ```python
-from scripts.portals_core import create_addressable
+from lib.portals_core import create_addressable
 
-# Fire effect at position
-fire = create_addressable(pos=(5, 0.5, 10), effect_name="Fire2")
+# Fire effect at position (collider off by default)
+fire, fire_logic = create_addressable(pos=(5, 0.5, 10), effect_name="Fire2")
 
 # Dust particles, scaled up
-dust = create_addressable(pos=(0, 1, 0), effect_name="DustParticles", scale=(2, 2, 2))
+dust, dust_logic = create_addressable(pos=(0, 1, 0), effect_name="DustParticles", scale=(2, 2, 2))
 
 # Lightning strike
-lightning = create_addressable(pos=(8, 0, 15), effect_name="LightningStrike1")
+lightning, lightning_logic = create_addressable(pos=(8, 0, 15), effect_name="LightningStrike1")
+
+# VFX that needs to block players (rare)
+barrier, barrier_logic = create_addressable(pos=(3, 0, 5), effect_name="Fire2", collider=True)
 ```
 
 ---
@@ -155,6 +158,7 @@ lightning = create_addressable(pos=(8, 0, 15), effect_name="LightningStrike1")
 
 ## Tips
 
+- **Disable colliders**: Addressable VFX items have colliders enabled by default, which can block player movement or projectiles. It is recommended to turn colliders off by setting `"noCollide": true` in the item data, unless you specifically need the VFX to be a physical obstacle.
 - **Toggling VFX**: Place the effect hidden (attach `HideObjectEvent` on Player Login), then use `ShowObjectEvent` when a trigger fires. Hide again after a delay to create one-shot effects.
 - **Scaling**: Larger `scale` values expand the entire particle system. Most effects look best at scale 1-3.
 - **Naming inconsistency**: Note `ExplosionRing1` (singular) vs `ExplosionRings2` / `ExplosionRings3` (plural). Use exact names.

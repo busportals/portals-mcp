@@ -23,6 +23,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "lib"))
 
 from portals_utils import validate_quest_name, validate_color, parse_extra_data, normalize_snapshot
+from portals_effects import EFFECT_TYPES, TRIGGER_TYPES
 
 
 # ============================================================================
@@ -47,50 +48,9 @@ VALID_PREFAB_NAMES = {
     "Addressable",
 }
 
-# 63 confirmed effect $type values (does not include item-specific effects)
-VALID_EFFECTS = {
-    # Visibility
-    "ShowObjectEvent", "HideObjectEvent", "ShowOutline", "HideOutline",
-    # Movement & Transform
-    "MoveToSpot", "PortalsAnimation", "DuplicateItem", "MoveItemToPlayer",
-    # Player Effects
-    "AddVelocityToPlayer", "TeleportEvent", "ChangePlayerHealth",
-    "DamageOverTime", "LockMovement", "UnlockMovement",
-    "StartAutoRun", "StopAutoRun", "PlayerEmote", "MutePlayer",
-    "HideAllPlayersEvent", "LockAvatarChange", "UnlockAvatarChange",
-    "DisplayAvatarScreen", "ChangeAvatarEffector", "ChangeMovementProfile",
-    "ChangeRoundyWearableEffector",
-    # Camera
-    "LockCamera", "UnlockCamera", "ChangeCameraZoom", "ToggleFreeCam",
-    "ChangeCamState", "SetCameraFilter", "ToggleLockCursor",
-    # UI & Notifications
-    "NotificationPillEvent",
-    # Values (Variables)
-    "DisplayValueEvent", "HideValueEvent", "UpdateScoreEvent", "UpdateScoreEventString",
-    # Function Effects
-    "FunctionEffector",
-    # Quest/Task Control
-    "RunTriggersFromEffector", "ResetAllTasks",
-    # Timers
-    "StartTimerEffect", "StopTimerEffect", "CancelTimerEffect",
-    # Leaderboard
-    "PostScoreToLeaderboard", "ClearLeaderboard", "OpenLeaderboardEffect",
-    # Audio
-    "PlaySoundOnce", "PlaySoundInALoop", "StopSound", "ChangeAudiusEffect",
-    # Environment
-    "ChangeBloom", "ChangeTimeOfDay", "RotateSkybox", "ChangeFog",
-    # Communication
-    "SendMessageToIframes", "ChangeVoiceGroup",
-    # Iframes
-    "IframeEvent", "IframeStopEvent",
-    # NPC
-    "NPCMessageEvent",
-    # Token Swap
-    "DisplaySellSwap", "HideSellSwap",
-    # Dialogue
-    "DialogEffectorDisplay",
-    # Inventory
-    "RefreshUserInventory",
+# General effects from EFFECT_TYPES (portals_effects.py) plus item-specific effects
+# that don't have builder functions but are valid in the Portals engine.
+VALID_EFFECTS = EFFECT_TYPES | {
     # Gun
     "EquipGunEffect", "TossGunEffect", "ResetGunEffect",
     # Trigger Zone
@@ -101,19 +61,10 @@ VALID_EFFECTS = {
     "RespawnDestructible",
 }
 
-# 23 confirmed trigger $type values
-VALID_TRIGGERS = {
-    # General (work on any item)
-    "OnClickEvent", "OnCollideEvent", "OnCollisionStoppedEvent",
-    "OnHoverStartEvent", "OnHoverEndEvent",
-    "OnPlayerLoggedIn", "OnKeyPressedEvent", "OnKeyReleasedEvent",
-    "OnPlayerDied", "OnPlayerRevived",
-    "OnPlayerMove", "OnPlayerStoppedMoving",
-    "OnMicrophoneUnmuted", "OnTimerStopped", "OnCountdownTimerFinished",
-    "ScoreTrigger", "OnAnimationStoppedEvent", "OnItemCollectedEvent",
-    "OnItemClickEvent", "PlayerLeave", "SwapVolume",
-    # Trigger-cube-only (OnExitEvent is an alias for UserExitTrigger)
-    "OnEnterEvent", "UserExitTrigger", "OnExitEvent",
+# General triggers from TRIGGER_TYPES (portals_effects.py) plus item-specific triggers.
+VALID_TRIGGERS = TRIGGER_TYPES | {
+    # Alias
+    "UserExitTrigger",  # alias for OnExitEvent
     # Item-specific
     "OnDestroyedEvent",
     "OnGunEquippedTrigger", "ShotHitTrigger", "GotKillTrigger",

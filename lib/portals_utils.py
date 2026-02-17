@@ -82,7 +82,7 @@ def create_quest_pair(
         name_suffix: Suffix for the quest name (e.g., "assemble", "collect")
         creator: The authenticated user's Firebase UID (required)
         multiplayer: If True, quest state is synced across all players
-        auto_start: If True, quest activates when player enters room
+        auto_start: Does NOT set the quest to Active state. A trigger is still required to transition the quest to Active.
         visible: If True, quest appears in player's quest log
         display_group: Group label for quest log UI (same value groups quests together)
         requirements: List of requirement dicts, e.g. [{"delete": False, "amount": 1, "type": "quest", "id": "mlh..."}]
@@ -169,6 +169,11 @@ def quaternion_from_euler(yaw: float = 0.0, pitch: float = 0.0, roll: float = 0.
     qz = cy * cp * sr - sy * sp * cr
 
     return (qx, qy, qz, qw)
+
+
+def yrot(deg: float) -> Tuple[float, float, float, float]:
+    """Shorthand for Y-axis rotation quaternion. Returns (qx, qy, qz, qw)."""
+    return quaternion_from_euler(yaw=deg)
 
 
 def euler_from_quaternion(qx: float, qy: float, qz: float, qw: float) -> Tuple[float, float, float]:

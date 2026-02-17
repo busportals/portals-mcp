@@ -88,7 +88,7 @@ Quests come in **pairs** -- one `inProgress` entry and one `completed` entry sha
 | `Enabled` | Boolean | `true` | ✅ |
 | `RepeatableLimit` | Number | `0` = infinite repeats, `1` = one-shot, `N` = max N completions | ✅ |
 | `FinishTime` | Number | `0` = no time limit. Positive value = seconds before auto-expiry | ✅ |
-| `AutoStart` | Boolean | `false`. If `true`, quest auto-activates when player enters room | ✅ |
+| `AutoStart` | Boolean | `false`. **Does NOT set the quest to Active state.** Setting this to `true` does not make the quest progress to state 1 (Active). To transition a quest to Active, you must use a trigger (e.g., `TaskTriggerSubscription` with `OnClickEvent`, `OnEnterEvent`, etc.). | ✅ |
 | `TriggeredByInventory` | Boolean | `false`. If `true`, quest is triggered by inventory item activation | ✅ |
 | `Requirements` | Array | `[]` unless quest has dependencies. See [Requirements](#requirements) below | ✅ |
 | `Creator` | String | **Must be the authenticated user's Firebase UID** (from `mcp__portals__authenticate` response). Not an arbitrary string. | ✅ |
@@ -336,6 +336,8 @@ add_tasks_to_logic(logic[id_], [effect_state_0, effect_state_1, effect_state_2])
 
 **Triggering state changes:**
 
+> ⚠️ **A quest must be triggered to become Active.** A quest starts in "Not Active" (state 0) and stays there until a trigger fires. `AutoStart: true` does **NOT** make the quest Active — you always need a trigger.
+
 1. **Click to advance:**
 ```python
 from portals_effects import add_task_to_logic, quest_trigger, trigger_on_click
@@ -349,18 +351,25 @@ task = quest_trigger(
 add_task_to_logic(logic[id_], task)
 ```
 
-2. **Auto-start on player login:**
-```json
-{
-  "AutoStart": true
-}
+2. **Player enters zone:**
+```python
+# OnEnterEvent trigger on a Trigger volume activates the quest
+task = quest_trigger(
+    quest["quest_id"], quest["quest_name"],
+    target_state=111,
+    trigger=trigger_on_enter()
+)
+add_task_to_logic(logic[trigger_id_], task)
 ```
 
 3. **Variable threshold:**
-Use `ValueUpdatedEvent` trigger (see [triggers/world.md](../triggers/world.md))
+Use `ValueUpdatedEvent` trigger (see [function-effects-reference.md](../workflows/function-effects-reference.md))
 
 4. **Timer:**
 Use `TimerStoppedEvent` trigger
+
+5. **Chain from another quest:**
+Use `RunTriggersFromEffector` in a `TaskEffectorSubscription` on the preceding quest (see [function-effects-reference.md](../workflows/function-effects-reference.md))
 
 See [effects/logic.md](../effects/logic.md) for `RunTriggersFromEffector` (chaining quests).
 

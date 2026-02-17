@@ -171,7 +171,7 @@ Quests are stored as a flat dict keyed by quest ID. Each logical quest has TWO e
 | `Group` | String | `""`, `"nonPersistent"`, or `"multiplayer"` | `""` = single-player persistent, `"nonPersistent"` = single-player resets, `"multiplayer"` = shared persistent |
 | `Enabled` | Boolean | `true` | Must be `true` for quest to function |
 | `RepeatableLimit` | Number | `0` | How many times quest can repeat. `0` = infinite |
-| `AutoStart` | Boolean | `false` | If `true`, quest activates when player enters room |
+| `AutoStart` | Boolean | `false` | **Does NOT set the quest to Active state.** This field does not trigger a state transition. To make a quest Active, you must use a trigger (e.g., `TaskTriggerSubscription` with `OnClickEvent`, `OnEnterEvent`, etc.). |
 | `Requirements` | Array | `[]` | Quest dependencies. Use empty array unless you have specific dependencies |
 | `Creator` | String | Firebase UID | MUST be the authenticated user's Firebase UID (from `authenticate` response). Quests with invalid Creator will not function. |
 | `Tracked` | Boolean | `true` | Whether quest appears in player's quest log |

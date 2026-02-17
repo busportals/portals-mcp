@@ -778,7 +778,8 @@ def create_addressable(
     pos: Tuple[float, float, float],
     effect_name: str,
     scale: Tuple[float, float, float] = (1, 1, 1),
-    rot: Tuple[float, float, float, float] = (0, 0, 0, 1)
+    rot: Tuple[float, float, float, float] = (0, 0, 0, 1),
+    collider: bool = False
 ) -> Tuple[Dict, Dict]:
     """
     Create Addressable VFX - built-in particle/visual effects.
@@ -789,6 +790,7 @@ def create_addressable(
             The "FurnitureAddressables/" prefix is added automatically.
         scale: Scale multiplier for the particle system
         rot: Quaternion rotation
+        collider: False = no collision (recommended for VFX), True = solid
 
     Returns:
         (item_dict, logic_dict) tuple
@@ -807,6 +809,8 @@ def create_addressable(
     content_string = f"FurnitureAddressables/{effect_name}"
 
     logic = {"Tasks": [], "ViewNodes": []}
+    if not collider:
+        logic["c"] = False
 
     item = create_base_item(
         prefab_name="Addressable",

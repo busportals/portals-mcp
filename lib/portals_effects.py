@@ -32,6 +32,72 @@ from typing import Dict, List, Optional
 
 
 # ============================================================================
+# CANONICAL TYPE SETS (imported by validate_room.py and other tools)
+# These cover all general-purpose effects/triggers that have builder functions.
+# Item-specific types (gun, vehicle, destructible) are maintained in the validator.
+# ============================================================================
+
+EFFECT_TYPES = {
+    # Visibility
+    "ShowObjectEvent", "HideObjectEvent", "ShowOutline", "HideOutline",
+    # Movement & Transform
+    "MoveToSpot", "PortalsAnimation", "DuplicateItem", "MoveItemToPlayer",
+    # Player Effects
+    "AddVelocityToPlayer", "TeleportEvent", "ChangePlayerHealth",
+    "DamageOverTime", "LockMovement", "UnlockMovement",
+    "StartAutoRun", "StopAutoRun", "PlayerEmote", "MutePlayer",
+    "HideAllPlayersEvent", "LockAvatarChange", "UnlockAvatarChange",
+    "DisplayAvatarScreen", "ChangeAvatarEffector", "ChangeMovementProfile",
+    "ChangeRoundyWearableEffector",
+    # Camera
+    "LockCamera", "UnlockCamera", "ChangeCameraZoom", "ToggleFreeCam",
+    "ChangeCamState", "SetCameraFilter", "ToggleLockCursor",
+    # UI & Notifications
+    "NotificationPillEvent",
+    # Values (Variables)
+    "DisplayValueEvent", "HideValueEvent", "UpdateScoreEvent", "UpdateScoreEventString",
+    # Function Effects
+    "FunctionEffector",
+    # Quest/Task Control
+    "RunTriggersFromEffector", "ResetAllTasks",
+    # Timers
+    "StartTimerEffect", "StopTimerEffect", "CancelTimerEffect",
+    # Leaderboard
+    "PostScoreToLeaderboard", "ClearLeaderboard", "OpenLeaderboardEffect",
+    # Audio
+    "PlaySoundOnce", "PlaySoundInALoop", "StopSound", "ChangeAudiusEffect",
+    # Environment
+    "ChangeBloom", "ChangeTimeOfDay", "RotateSkybox", "ChangeFog",
+    # Communication
+    "SendMessageToIframes", "ChangeVoiceGroup",
+    # Iframes
+    "IframeEvent", "IframeStopEvent",
+    # NPC
+    "NPCMessageEvent",
+    # Token Swap
+    "DisplaySellSwap", "HideSellSwap",
+    # Dialogue
+    "DialogEffectorDisplay",
+    # Inventory
+    "RefreshUserInventory",
+}
+
+TRIGGER_TYPES = {
+    # General (work on any item)
+    "OnClickEvent", "OnCollideEvent", "OnCollisionStoppedEvent",
+    "OnHoverStartEvent", "OnHoverEndEvent",
+    "OnPlayerLoggedIn", "OnKeyPressedEvent", "OnKeyReleasedEvent",
+    "OnPlayerDied", "OnPlayerRevived",
+    "OnPlayerMove", "OnPlayerStoppedMoving",
+    "OnMicrophoneUnmuted", "OnTimerStopped", "OnCountdownTimerFinished",
+    "ScoreTrigger", "OnAnimationStoppedEvent", "OnItemCollectedEvent",
+    "OnItemClickEvent", "PlayerLeave", "SwapVolume",
+    # Trigger-cube-only
+    "OnEnterEvent", "OnExitEvent",
+}
+
+
+# ============================================================================
 # EFFECTOR BUILDERS (63 confirmed — ALL general effects)
 # Each returns the inner effector payload: {"$type": "...", ...params}
 # ============================================================================
@@ -1077,3 +1143,53 @@ def add_tasks_to_logic(logic: Dict, tasks: List[Dict]) -> None:
     if "Tasks" not in logic:
         logic["Tasks"] = []
     logic["Tasks"].extend(tasks)
+
+
+# ============================================================================
+# QUEST HELPER CLASS
+# ============================================================================
+
+class Quest:
+    """Bound quest helper — eliminates repeated quest_id/quest_name in wiring.
+
+    Usage:
+        q = Quest(0, "gate_puzzle", creator)
+        quests.update(q.entries)
+
+        # Single effect on quest state:
+        q.effector(logic[gate_id], 2, effector_hide())
+
+        # Multiple effects on same quest state:
+        q.on_state(logic[gate_id], 2, [
+            effector_hide(),
+            effector_notification("Open!", "FFD700"),
+            effector_play_sound_once(url),
+        ])
+
+        # Trigger that advances quest:
+        q.trigger(logic[btn_id], 181, trigger_on_click())
+    """
+
+    def __init__(self, number, name_suffix, creator, **kwargs):
+        from portals_utils import create_quest_pair
+        pair = create_quest_pair(number, name_suffix, creator, **kwargs)
+        self.entries = pair["entries"]
+        self.id = pair["quest_id"]
+        self.name = pair["quest_name"]
+
+    def effector(self, logic_entry, target_state, eff):
+        """Attach a single quest-linked effect to a logic entry."""
+        add_task_to_logic(logic_entry, quest_effector(
+            self.id, self.name, target_state, eff
+        ))
+
+    def on_state(self, logic_entry, target_state, effectors):
+        """Attach multiple quest-linked effects to a logic entry (same state)."""
+        tasks = [quest_effector(self.id, self.name, target_state, e) for e in effectors]
+        add_tasks_to_logic(logic_entry, tasks)
+
+    def trigger(self, logic_entry, target_state, trig):
+        """Attach a quest-linked trigger to a logic entry."""
+        add_task_to_logic(logic_entry, quest_trigger(
+            self.id, self.name, target_state, trig
+        ))
