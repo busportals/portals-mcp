@@ -6,6 +6,8 @@
 
 Each component is written by a **fresh subagent** with a **focused context**. The main conversation handles design and coordination — it never writes component code itself.
 
+> **Logic serialization rule:** Components build logic entries as plain dicts. The `generate.py` compositor is the ONLY place that calls `serialize_logic(room_data)` from `portals_utils` — immediately before writing `snapshot.json`. Never serialize early or the dicts become strings that downstream components can't mutate.
+
 ## File Structure
 
 ```
@@ -342,7 +344,8 @@ components/
 
 ### Phase 4: Assemble (Main Context)
 1. Run `generate.py` to produce `snapshot.json`
-2. Validate output (item count, quest count, no errors)
+   - `generate.py` must call `serialize_logic(room_data)` before `json.dump` — logic values are dicts during build and must be serialized to JSON strings before writing
+2. Validate: `python tools/validate_room.py games/{room-id}/snapshot.json` — fix any errors before continuing
 3. Generate build summary by calling `generate_build_summary()` — saves to `BUILD_SUMMARY.md`
 4. Proceed to Quality Review Loop
 
@@ -379,8 +382,9 @@ Pass 3: 0 enhancements — CONVERGED
 - No zero categories in build summary
 
 ### Phase 6: Push (Main Context)
-1. Push final `snapshot.json` to room via MCP
-2. Share room URL with user: `https://theportal.to/room/{room-id}`
+1. Confirm `snapshot.json` passes validation: `python tools/validate_room.py games/{room-id}/snapshot.json`
+2. Push final `snapshot.json` to room via MCP (`set_room_data`)
+3. Share room URL with user: `https://theportal.to/?room={room-id}`
 
 ### Phase 7: Iterate (Main Context or Subagent)
 1. User playtests, gives feedback

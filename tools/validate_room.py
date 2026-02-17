@@ -261,11 +261,19 @@ def validate_top_level(data: dict) -> List[str]:
         rt = data["roomTasks"]
         if not isinstance(rt, dict):
             errors.append(fmt("roomTasks", f"must be a dict, got {type(rt).__name__}"))
-        elif rt != {"Tasks": []}:
+        else:
             if "Tasks" not in rt:
-                errors.append(fmt("roomTasks", 'must be {"Tasks": []}, not ' + json.dumps(rt)[:80]))
+                errors.append(fmt("roomTasks", 'missing "Tasks" key'))
             elif not isinstance(rt["Tasks"], list):
                 errors.append(fmt("roomTasks", '"Tasks" must be a list'))
+            else:
+                # Tasks may contain quest ID strings (autostart quest refs) — validate each entry
+                all_quest_ids = set(data.get("quests", {}).keys())
+                for i, entry in enumerate(rt["Tasks"]):
+                    if not isinstance(entry, str):
+                        errors.append(fmt("roomTasks", f'Tasks[{i}] must be a string quest ID, got {type(entry).__name__}'))
+                    elif all_quest_ids and entry not in all_quest_ids:
+                        errors.append(fmt("roomTasks", f'Tasks[{i}] quest ID "{entry}" not found in quests'))
 
     if "roomItems" in data:
         items = data["roomItems"]
@@ -836,6 +844,16 @@ def validate_snapshot(file_path: str) -> List[str]:
 
     if not isinstance(data, dict):
         return [fmt("file", f"root must be a dict, got {type(data).__name__}")]
+
+    # Check logic values are JSON strings BEFORE normalize merges them into items
+    logic = data.get("logic")
+    if logic is not None:
+        if not isinstance(logic, dict):
+            errors.append(fmt("logic", f"must be a dict, got {type(logic).__name__}"))
+        else:
+            for item_key, val in logic.items():
+                if not isinstance(val, str):
+                    errors.append(fmt(f"logic[{item_key}]", f"must be a JSON string, got {type(val).__name__} — call serialize_logic() before writing snapshot.json"))
 
     # Normalize: merge logic into items as extraData
     normalize_snapshot(data)

@@ -13,9 +13,7 @@ Translates approved game designs into playable Portals rooms, and iterates based
    - Item formats: `docs/reference/items/` (building.md, models.md, gameplay.md, media.md, lighting.md, display.md, interactive.md)
    - Effects & triggers: `docs/reference/interactions.md`
    - Quests: `docs/reference/quests.md`
-3. Read existing Python helpers: check `lib/portals_core.py`, `lib/portals_effects.py`, `lib/portals_utils.py`
-   - Use these for items they support (cubes, text, spawns, portals, collectibles, jump pads, triggers, leaderboards)
-   - For item types NOT in the helpers (lights, NPCs, GLBs, images, videos, guns, etc.), construct item dicts directly using the reference
+3. Read `docs/reference/api-cheatsheet.md` for the complete API (all item creators, triggers, effectors, helpers)
 4. If the game involves **gating progress on conditions, tracking/modifying values (scores, coins, health), decisions based on state, randomness, timer logic, multiplayer role/team assignment, or delayed consequences**, load `docs/workflows/function-effects-reference.md` for FunctionEffector expression syntax
 
 ### Step 2: Write the Generation Script
@@ -28,33 +26,20 @@ Create `games/{room-id}/generate.py` with this structure:
 Produces all room data for: {one-line description}
 Room: {room-id}
 """
-
-import sys
-import os
-import json
-import uuid
-import random
-import string
-import math
-
-# Adjust this path to point to your project's lib/ directory
+import sys, os, json, math
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'lib'))
 
-from portals_core import create_cube, create_text, create_spawn, create_portal, create_collectible, create_jump_pad, create_trigger, create_leaderboard, create_base_item
-from portals_effects import create_move_effect, create_show_hide_effect, create_run_triggers_effect, create_click_trigger, add_effect_to_item, add_effects_to_item
-from portals_utils import create_quest_pair, generate_quest_id, quaternion_from_euler, validate_room_data
-
-# ============================================================================
-# Configuration -- tweak these to iterate
-# ============================================================================
-GAME_NAME = "{Game Name}"
-# ... game-specific parameters ...
+# Import only what this script needs — see docs/reference/api-cheatsheet.md for full API
+from portals_core import create_cube, create_spawn, create_glb, create_light, create_trigger
+from portals_effects import basic_interaction, add_task_to_logic, trigger_on_click, effector_notification
+from portals_utils import serialize_logic, default_settings, yrot
 
 # ============================================================================
 # Item Generation
 # ============================================================================
 items = {}
-quests = {"inProgress": [], "completed": []}
+logic = {}
+quests = {}
 item_id = 2  # Start at 2 (1 is reserved)
 
 def next_id():
@@ -63,36 +48,34 @@ def next_id():
     item_id += 1
     return current
 
-# --- Spawn Point ---
-items[next_id()] = create_spawn(pos=(0, 0.2, 0), name="")
+# All creators return (item, logic) tuples — always unpack into both dicts
+id_ = next_id()
+items[id_], logic[id_] = create_spawn(pos=(0, 0.2, 0), name="")
 
-# --- Environment ---
-# (floors, walls, decorations, lighting)
-
-# --- Gameplay ---
-# (platforms, triggers, collectibles, NPCs, etc.)
-
-# --- Quests & Effects ---
-# (quest pairs, state-driven animations, chaining)
+# To add interactions, wire tasks into the logic entry:
+# add_task_to_logic(logic[id_], basic_interaction(
+#     trigger=trigger_on_click(),
+#     effector=effector_notification("Clicked!", "00FF00")
+# ))
 
 # ============================================================================
 # Output
 # ============================================================================
-errors = validate_room_data({"items": items, "quests": quests})
-if errors:
-    print("VALIDATION ERRORS:")
-    for e in errors:
-        print(f"  - {e}")
-else:
-    print(f"Generated {len(items)} items, {len(quests['inProgress'])} quests")
-    print(f"Item IDs: 2 to {item_id - 1}")
+room_data = {
+    "roomItems": items,
+    "logic": logic,
+    "settings": default_settings(),
+    "roomTasks": {"Tasks": []},
+    "quests": quests,
+}
 
-# Save snapshot
-output = {"items": items, "quests": quests}
+# REQUIRED: serialize logic dicts to JSON strings before writing
+serialize_logic(room_data)
+
 output_path = os.path.join(os.path.dirname(__file__), 'snapshot.json')
 with open(output_path, 'w') as f:
-    json.dump(output, f, indent=2)
-print("Snapshot saved.")
+    json.dump(room_data, f, indent=2)
+print(f"Snapshot saved. {len(items)} items, {len(quests)} quest entries.")
 ```
 
 ### Script Quality Requirements
@@ -100,66 +83,21 @@ print("Snapshot saved.")
 - **Well-commented**: Group items by purpose (environment, gameplay, lighting, etc.)
 - **Parameterized**: Put tunable values (colors, sizes, positions, difficulty) in a config section at the top
 - **Complete**: Must generate ALL items needed -- environment, gameplay, lighting, decorations, audio-enabled collectibles
-- **Validated**: Run `validate_room_data()` before output
+- **Validated**: Run `python tools/validate_room.py` on the output before pushing
 
-### Building Item Types Without Helpers
+### Key Patterns
 
-For items not covered by `portals_core.py`, use `create_base_item()` directly:
+All item creators return `(item, logic)` tuples. Items hold spatial/visual data; logic holds behavioral data (interactions, type config). Import only what you need — the full API is in `docs/reference/api-cheatsheet.md`.
 
-```python
-# Light
-items[next_id()] = create_base_item(
-    prefab_name="Light",
-    pos=(0, 3, 0),
-    extra_data={"c": "FFFFFF", "b": 2.0, "r": 10.0, "Tasks": [], "ViewNodes": []}
-)
-
-# NPC
-items[next_id()] = create_base_item(
-    prefab_name="GLBNPC",
-    pos=(5, 0, 3),
-    content_string="https://example.com/avatar.glb",
-    extra_data={"n": "Guide", "a": "", "p": "You are a friendly guide. Help the player.", "bq": True, "swn": True, "events": [], "tags": [], "Tasks": [], "ViewNodes": []}
-)
-
-# Image (needs rotation to stand upright)
-items[next_id()] = create_base_item(
-    prefab_name="DefaultPainting",
-    pos=(0, 2, -5),
-    rot=quaternion_from_euler(pitch=90),  # Stand upright
-    scale=(3, 2, 0.03),
-    content_string="https://example.com/image.png",
-    extra_data={"t": True, "b": True, "Tasks": [], "ViewNodes": []}
-)
-
-# GLB model
-items[next_id()] = create_base_item(
-    prefab_name="GLB",
-    pos=(0, 0, 0),
-    content_string="https://example.com/model.glb",
-    extra_data={"s": False, "Tasks": [], "ViewNodes": []}
-)
-
-# Gun
-items[next_id()] = create_base_item(
-    prefab_name="Gun",
-    pos=(5, 0.5, 0),
-    extra_data={"weaponType": 1, "maxDamage": 20, "minDamage": 10, "firerate": 0.5, "clipSize": 12, "startLoaded": True, "Tasks": [], "ViewNodes": []}
-)
-```
-
-### Step 3: Run and Push
+### Step 3: Run, Validate, and Push
 
 1. Run the script: `python games/{room-id}/generate.py`
-2. Verify the output: check item count, quest count, any validation errors
+2. Validate: `python tools/validate_room.py games/{room-id}/snapshot.json` -- fix any errors before pushing
 3. Authenticate with MCP: call `authenticate` (opens browser for login)
-4. Read existing room data: `get_all_room_data` -- check if room has items
-5. Confirm with user if overwriting existing items
-6. Push items: `set_room_items(roomId, data=items)`
-7. Push quests if any: `set_room_quests(roomId, data=quests)`
-8. Return URL: `https://theportal.to/room/{room-id}`
-
-**Important**: The MCP has payload size limits. If the game has 100+ items, consider pushing in sections or verify the push succeeds.
+4. Read existing room data: `get_room_data(roomId)` -- check if room has items
+5. Confirm with user if overwriting existing data
+6. Push: `set_room_data(roomId, filePath)` -- pushes the entire snapshot.json (items, logic, settings, quests, roomTasks) in one call
+7. Return URL: `https://theportal.to/?room={room-id}`
 
 ## Iterate Workflow
 
