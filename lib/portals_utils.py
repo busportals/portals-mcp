@@ -58,6 +58,18 @@ def generate_quest_id() -> str:
     return f"mlh{chars}"
 
 
+def make_id_generator():
+    """
+    Returns a callable that generates sequential string IDs.
+    Use as: next_id = make_id_generator(); id_ = next_id()
+    """
+    counter = [0]
+    def next_id():
+        counter[0] += 1
+        return str(counter[0])
+    return next_id
+
+
 def create_quest_pair(
     number: int,
     name_suffix: str,

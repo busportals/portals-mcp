@@ -778,8 +778,7 @@ def validate_cross_references(data: dict) -> List[str]:
 
             # Check quest ID references
             trigger_id = task.get("TaskTriggerId", "")
-            if trigger_id and quest_ids and trigger_id not in quest_ids:
-                # Only flag if we actually have quests defined
+            if trigger_id and trigger_id not in quest_ids:
                 errors.append(fmt(section, f'Tasks[{i}] TaskTriggerId "{trigger_id}" not found in quests'))
 
             # Check effect-specific cross-references

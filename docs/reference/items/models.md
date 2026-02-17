@@ -78,11 +78,6 @@ coin = create_collectible(
 )
 ```
 
-**Common coin GLB URL:**
-```
-https://dwh7ute75zx34.cloudfront.net/Models/Collectibles/Coin_Gold.glb?dynamic=true
-```
-
 ---
 
 ## Destructible

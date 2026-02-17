@@ -43,6 +43,8 @@ Leaderboards, charts, and billboards for displaying information.
 
 Displays player rankings and scores. Uses `prefabName: "Leaderboard"`. The visual style is chosen via `contentString` -- only the 3 standard leaderboard models are supported. Leaderboards can display either time-based or numeric (points) values.
 
+**Dimensions (scale 1):** The full standing models (Black/Neon Blue, Gray/Neon Orange) are approximately 2m wide × 3m tall. Place at `y: 0.75` to sit flush on the floor at Y=0. The Screen Only variant is a flat screen panel — no pedestal. Scale uniformly to resize.
+
 **Base structure:**
 ```json
 {
@@ -51,7 +53,7 @@ Displays player rankings and scores. Uses `prefabName: "Leaderboard"`. The visua
   "rot": {"x": 0, "y": 0, "z": 0, "w": 1},
   "scale": {"x": 1, "y": 1, "z": 1},
   "contentString": "~1slpk_Leaderboard_Black_NeonBlue.glb?alt=media&token=8b518415-b51b-4264-ae7e-d49465260757",
-  "extraData": "{\"gn\":\"Game Name\",\"ln\":\"Score Label\",\"ci\":\"\",\"Tasks\":[],\"ViewNodes\":[]}"
+  "extraData": "{\"gn\":\"Game Name\",\"ln\":\"coins\",\"ci\":\"\",\"Tasks\":[],\"ViewNodes\":[]}"
 }
 ```
 
@@ -67,9 +69,18 @@ Set `contentString` to one of these values:
 
 **extraData fields:**
 - `gn`: Game name displayed on the leaderboard.
-- `ln`: Score label (e.g., "Points", "Time", "Score").
-- `tb`: Time-based. `true` = leaderboard displays time values. `false` or omit = displays numeric values (points).
+- `ln`: **Score label — must exactly match the variable or timer name you want to display.** This is the wiring key. If your score variable is named `"coins"`, set `ln: "coins"`. If your timer is named `"run_time"`, set `ln: "run_time"`. A mismatch means the leaderboard displays nothing.
+- `tb`: Display mode toggle. `false` or omit = **points mode** (numeric values from `UpdateScoreEvent`). `true` = **timer mode** (time values from `StopTimerEffect`). **Must match the type of the variable in `ln`** — if `ln` points to a numeric variable, leave `tb` off; if it points to a timer, set `tb: true`.
 - `ci`: Custom identifier for the data source. Empty string `""` for standard score tracking. Set to `"swapsPerRoom"` to track token swap volume (specific to rooms with token trading).
+
+**Wiring summary:**
+
+| You're tracking | `ln` value | `tb` value |
+|-----------------|-----------|-----------|
+| A numeric variable (points, coins, kills) | Exact variable name (e.g. `"coins"`) | `false` / omit |
+| A timer | Exact timer name (e.g. `"run_time"`) | `true` |
+
+To post a score to the leaderboard, fire `PostScoreToLeaderboard` from a trigger on the same item (or any trigger). The leaderboard reads the current value of the variable/timer named in `ln` at the moment it's posted.
 
 ---
 
