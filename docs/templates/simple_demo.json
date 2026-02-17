@@ -1,5 +1,5 @@
 {
-  "items": {
+  "roomItems": {
     "2": {
       "prefabName": "SpawnPoint",
       "parentItemID": 0,
@@ -15,7 +15,6 @@
       "hoverTitle": "",
       "hoverBodyContent": "",
       "ImageInteractivityDetails": {"buttonText": "", "buttonURL": ""},
-      "extraData": "{\"Tasks\":[],\"n\":\"\",\"r\":0.0}",
       "sessionData": "",
       "instanceId": "",
       "placed": true,
@@ -37,7 +36,6 @@
       "hoverTitle": "",
       "hoverBodyContent": "",
       "ImageInteractivityDetails": {"buttonText": "", "buttonURL": ""},
-      "extraData": "{\"col\":\"4169E1\",\"s\":false,\"Tasks\":[],\"ViewNodes\":[]}",
       "sessionData": "",
       "instanceId": "",
       "placed": true,
@@ -59,7 +57,6 @@
       "hoverTitle": "",
       "hoverBodyContent": "",
       "ImageInteractivityDetails": {"buttonText": "", "buttonURL": ""},
-      "extraData": "{\"col\":\"32CD32\",\"s\":false,\"Tasks\":[],\"ViewNodes\":[]}",
       "sessionData": "",
       "instanceId": "",
       "placed": true,
@@ -81,7 +78,6 @@
       "hoverTitle": "",
       "hoverBodyContent": "",
       "ImageInteractivityDetails": {"buttonText": "", "buttonURL": ""},
-      "extraData": "{\"col\":\"FFD700\",\"s\":false,\"Tasks\":[],\"ViewNodes\":[]}",
       "sessionData": "",
       "instanceId": "",
       "placed": true,
@@ -103,7 +99,6 @@
       "hoverTitle": "",
       "hoverBodyContent": "",
       "ImageInteractivityDetails": {"buttonText": "", "buttonURL": ""},
-      "extraData": "{\"col\":\"FF4500\",\"s\":false,\"Tasks\":[],\"ViewNodes\":[]}",
       "sessionData": "",
       "instanceId": "",
       "placed": true,
@@ -125,7 +120,6 @@
       "hoverTitle": "",
       "hoverBodyContent": "",
       "ImageInteractivityDetails": {"buttonText": "", "buttonURL": ""},
-      "extraData": "{\"col\":\"9370DB\",\"s\":false,\"Tasks\":[],\"ViewNodes\":[]}",
       "sessionData": "",
       "instanceId": "",
       "placed": true,
@@ -147,7 +141,6 @@
       "hoverTitle": "",
       "hoverBodyContent": "",
       "ImageInteractivityDetails": {"buttonText": "", "buttonURL": ""},
-      "extraData": "{\"p\":5.5}",
       "sessionData": "",
       "instanceId": "",
       "placed": true,
@@ -169,7 +162,6 @@
       "hoverTitle": "",
       "hoverBodyContent": "",
       "ImageInteractivityDetails": {"buttonText": "", "buttonURL": ""},
-      "extraData": "{\"p\":6.5}",
       "sessionData": "",
       "instanceId": "",
       "placed": true,
@@ -191,7 +183,6 @@
       "hoverTitle": "",
       "hoverBodyContent": "",
       "ImageInteractivityDetails": {"buttonText": "", "buttonURL": ""},
-      "extraData": "{\"text\":\"<b><color=#FFD700>Portals MCP Demo</color></b>\\nCollect all coins!\",\"lookAtCamera\":true,\"Tasks\":[],\"ViewNodes\":[]}",
       "sessionData": "",
       "instanceId": "",
       "placed": true,
@@ -213,7 +204,6 @@
       "hoverTitle": "",
       "hoverBodyContent": "",
       "ImageInteractivityDetails": {"buttonText": "", "buttonURL": ""},
-      "extraData": "{\"gn\":\"MCP Demo\",\"ln\":\"Coins\",\"ci\":\"\",\"Tasks\":[],\"ViewNodes\":[]}",
       "sessionData": "",
       "instanceId": "",
       "placed": true,
@@ -221,8 +211,72 @@
       "superLocked": false
     }
   },
-  "quests": {
-    "inProgress": [],
-    "completed": []
-  }
+  "logic": {
+    "2": {
+      "Tasks": [],
+      "n": "",
+      "r": 0.0
+    },
+    "3": {
+      "col": "4169E1",
+      "s": false,
+      "Tasks": [],
+      "ViewNodes": []
+    },
+    "4": {
+      "col": "32CD32",
+      "s": false,
+      "Tasks": [],
+      "ViewNodes": []
+    },
+    "5": {
+      "col": "FFD700",
+      "s": false,
+      "Tasks": [],
+      "ViewNodes": []
+    },
+    "6": {
+      "col": "FF4500",
+      "s": false,
+      "Tasks": [],
+      "ViewNodes": []
+    },
+    "7": {
+      "col": "9370DB",
+      "s": false,
+      "Tasks": [],
+      "ViewNodes": []
+    },
+    "8": {
+      "p": 5.5
+    },
+    "9": {
+      "p": 6.5
+    },
+    "10": {
+      "text": "<b><color=#FFD700>Portals MCP Demo</color></b>\nCollect all coins!",
+      "lookAtCamera": true,
+      "Tasks": [],
+      "ViewNodes": []
+    },
+    "11": {
+      "gn": "MCP Demo",
+      "ln": "Coins",
+      "ci": "",
+      "Tasks": [],
+      "ViewNodes": []
+    }
+  },
+  "settings": {
+    "roomBase": "BlankScene",
+    "isNight": false,
+    "allCanBuild": false,
+    "chatDisabled": false,
+    "globalSpeaking": false,
+    "inTownHallMode": false,
+    "tasksRefresh": true,
+    "roomSettingsExtraData": "{}"
+  },
+  "roomTasks": {"Tasks": []},
+  "quests": {}
 }

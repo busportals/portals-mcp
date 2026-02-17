@@ -1,9 +1,19 @@
 """
 Portals Core Item Generators
 Provides functions to create all standard Portals item types.
+
+All item creators return (item_dict, logic_dict) tuples. Items contain
+spatial/visual properties. Logic contains behavioral properties (interactions,
+type-specific config).
+
+Usage:
+    items = {}
+    logic = {}
+
+    id_ = next_id()
+    items[id_], logic[id_] = create_cube(pos=(0, 0.5, 0), color="FF0000")
 """
 
-import json
 from typing import Dict, Tuple, Optional
 
 
@@ -12,8 +22,7 @@ def create_base_item(
     pos: Tuple[float, float, float] = (0, 0, 0),
     rot: Tuple[float, float, float, float] = (0, 0, 0, 1),
     scale: Tuple[float, float, float] = (1, 1, 1),
-    content_string: str = "",
-    extra_data: Optional[Dict] = None
+    content_string: str = ""
 ) -> Dict:
     """
     Create base item structure that all Portals items share.
@@ -24,14 +33,10 @@ def create_base_item(
         rot: Quaternion rotation (qx, qy, qz, qw). Default is identity (no rotation)
         scale: Scale (x, y, z)
         content_string: URL or room ID depending on item type
-        extra_data: Dictionary to serialize as extraData JSON string
 
     Returns:
-        Complete item dict ready to add to items collection
+        Item dict with spatial/visual properties (no extraData)
     """
-    if extra_data is None:
-        extra_data = {"Tasks": [], "ViewNodes": []}
-
     return {
         "prefabName": prefab_name,
         "parentItemID": 0,
@@ -47,7 +52,6 @@ def create_base_item(
         "hoverTitle": "",
         "hoverBodyContent": "",
         "ImageInteractivityDetails": {"buttonText": "", "buttonURL": ""},
-        "extraData": json.dumps(extra_data, separators=(',', ':')),
         "sessionData": "",
         "instanceId": "",
         "placed": True,
@@ -67,7 +71,7 @@ def create_cube(
     shadows: bool = True,
     nav_mesh: bool = False,
     title: str = ""
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create a ResizableCube - the primary building block.
 
@@ -84,34 +88,34 @@ def create_cube(
         title: Internal label for identification (not visible in-world)
 
     Returns:
-        ResizableCube item dict
+        (item_dict, logic_dict) tuple
     """
-    extra = {
+    logic = {
         "col": color,
         "Tasks": [],
         "ViewNodes": []
     }
 
     if emission > 0:
-        extra["e"] = emission
+        logic["e"] = emission
     if opacity < 1.0:
-        extra["o"] = opacity
+        logic["o"] = opacity
     if not collider:
-        extra["c"] = False
+        logic["c"] = False
     if not shadows:
-        extra["s"] = False
+        logic["s"] = False
     if nav_mesh:
-        extra["nav"] = True
+        logic["nav"] = True
     if title:
-        extra["title"] = title
+        logic["title"] = title
 
-    return create_base_item(
+    item = create_base_item(
         prefab_name="ResizableCube",
         pos=pos,
         scale=scale,
-        content_string=texture,
-        extra_data=extra
+        content_string=texture
     )
+    return (item, logic)
 
 
 def create_text(
@@ -119,7 +123,7 @@ def create_text(
     content: str,
     billboard: bool = True,
     scale: Tuple[float, float, float] = (1, 1, 1)
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create WorldText - 3D text label with rich formatting.
 
@@ -133,28 +137,28 @@ def create_text(
         scale: Scale (x, y, z)
 
     Returns:
-        WorldText item dict
+        (item_dict, logic_dict) tuple
     """
-    extra = {
+    logic = {
         "text": content,
         "lookAtCamera": billboard,
         "Tasks": [],
         "ViewNodes": []
     }
 
-    return create_base_item(
+    item = create_base_item(
         prefab_name="WorldText",
         pos=pos,
-        scale=scale,
-        extra_data=extra
+        scale=scale
     )
+    return (item, logic)
 
 
 def create_spawn(
     pos: Tuple[float, float, float],
     name: str = "",
     rotation_offset: float = 0.0
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create SpawnPoint - defines where players appear.
 
@@ -164,7 +168,7 @@ def create_spawn(
         rotation_offset: Player facing direction offset in degrees. 0.0 = faces Z+
 
     Returns:
-        SpawnPoint item dict
+        (item_dict, logic_dict) tuple
 
     Notes:
         - Default spawn (name="") used when entering room or portal without spawn name
@@ -172,18 +176,18 @@ def create_spawn(
         - Scale always 0.3 for spawn points
         - Multiple spawns with same name = random assignment
     """
-    extra = {
+    logic = {
         "Tasks": [],
         "n": name,
         "r": rotation_offset
     }
 
-    return create_base_item(
+    item = create_base_item(
         prefab_name="SpawnPoint",
         pos=pos,
-        scale=(0.3, 0.3, 0.3),
-        extra_data=extra
+        scale=(0.3, 0.3, 0.3)
     )
+    return (item, logic)
 
 
 def create_portal(
@@ -192,7 +196,7 @@ def create_portal(
     destination_room_id: str,
     spawn_name: str = "",
     auto_teleport: bool = True
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create Portal - teleportation between rooms or spawn points.
 
@@ -204,9 +208,9 @@ def create_portal(
         auto_teleport: True = instant teleport on contact, False = press X
 
     Returns:
-        Portal item dict
+        (item_dict, logic_dict) tuple
     """
-    extra = {
+    logic = {
         "id": destination_room_id,
         "sn": spawn_name,
         "cm": "teleport",
@@ -215,15 +219,15 @@ def create_portal(
     }
 
     if auto_teleport:
-        extra["auto"] = True
+        logic["auto"] = True
 
-    return create_base_item(
+    item = create_base_item(
         prefab_name="Portal",
         pos=pos,
         scale=scale,
-        content_string=destination_room_id,
-        extra_data=extra
+        content_string=destination_room_id
     )
+    return (item, logic)
 
 
 def create_collectible(
@@ -234,7 +238,7 @@ def create_collectible(
     sound_url: str = "",
     display_value: bool = True,
     respawn_time: Optional[Tuple[float, float]] = None
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create Collectible GLB - pickupable item that modifies a variable.
 
@@ -248,7 +252,7 @@ def create_collectible(
         respawn_time: Tuple (min_seconds, max_seconds) for random respawn delay
 
     Returns:
-        GlbCollectable item dict
+        (item_dict, logic_dict) tuple
 
     Notes:
         - Variable must be defined in room's variables array
@@ -259,7 +263,7 @@ def create_collectible(
     if "?dynamic=true" not in glb_url:
         glb_url += "?dynamic=true"
 
-    extra = {
+    logic = {
         "valueLabel": variable,
         "valueChange": value_change,
         "displayValue": display_value,
@@ -268,25 +272,25 @@ def create_collectible(
     }
 
     if sound_url:
-        extra["se"] = sound_url
+        logic["se"] = sound_url
 
     if respawn_time:
-        extra["minRespawnTime"] = respawn_time[0]
-        extra["maxRespawnTime"] = respawn_time[1]
+        logic["minRespawnTime"] = respawn_time[0]
+        logic["maxRespawnTime"] = respawn_time[1]
 
-    return create_base_item(
+    item = create_base_item(
         prefab_name="GlbCollectable",
         pos=pos,
-        content_string=glb_url,
-        extra_data=extra
+        content_string=glb_url
     )
+    return (item, logic)
 
 
 def create_jump_pad(
     pos: Tuple[float, float, float],
     power: float = 6.9,
     scale: Tuple[float, float, float] = (1, 1, 1)
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create JumpPad - launches players into the air.
 
@@ -300,16 +304,16 @@ def create_jump_pad(
         scale: Pad size (x, y, z). Larger = easier to hit
 
     Returns:
-        JumpPad item dict
+        (item_dict, logic_dict) tuple
     """
-    extra = {"p": power}
+    logic = {"p": power}
 
-    return create_base_item(
+    item = create_base_item(
         prefab_name="JumpPad",
         pos=pos,
-        scale=scale,
-        extra_data=extra
+        scale=scale
     )
+    return (item, logic)
 
 
 def create_trigger(
@@ -318,7 +322,7 @@ def create_trigger(
     press_button: bool = False,
     key_code: str = "X",
     message: str = ""
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create Trigger - invisible zone for interactions.
 
@@ -330,14 +334,14 @@ def create_trigger(
         message: Custom message shown as "Press [key] to [message]"
 
     Returns:
-        Trigger item dict
+        (item_dict, logic_dict) tuple
 
     Notes:
         - Invisible during play (visible in build mode)
         - Two trigger types: User Enter and User Exit
         - Add effects via Tasks array (see portals_effects.py)
     """
-    extra = {
+    logic = {
         "events": [],
         "cm": message,
         "keyCode": key_code,
@@ -346,14 +350,14 @@ def create_trigger(
     }
 
     if press_button:
-        extra["pressBtn"] = True
+        logic["pressBtn"] = True
 
-    return create_base_item(
+    item = create_base_item(
         prefab_name="Trigger",
         pos=pos,
-        scale=scale,
-        extra_data=extra
+        scale=scale
     )
+    return (item, logic)
 
 
 def create_light(
@@ -362,7 +366,7 @@ def create_light(
     brightness: float = 2.0,
     range: float = 10.0,
     night_only: bool = False
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create Light - static point light source.
 
@@ -374,9 +378,9 @@ def create_light(
         night_only: True = only active in night mode
 
     Returns:
-        Light item dict
+        (item_dict, logic_dict) tuple
     """
-    extra = {
+    logic = {
         "c": color,
         "b": brightness,
         "r": range,
@@ -385,9 +389,10 @@ def create_light(
     }
 
     if night_only:
-        extra["no"] = True
+        logic["no"] = True
 
-    return create_base_item(prefab_name="Light", pos=pos, extra_data=extra)
+    item = create_base_item(prefab_name="Light", pos=pos)
+    return (item, logic)
 
 
 def create_spotlight(
@@ -397,7 +402,7 @@ def create_spotlight(
     brightness: float = 2.0,
     range: float = 5.0,
     angle: float = 80.0
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create SpotLight - directional cone light.
 
@@ -410,9 +415,9 @@ def create_spotlight(
         angle: Cone spread angle in degrees. Smaller = narrow beam
 
     Returns:
-        SpotLight item dict
+        (item_dict, logic_dict) tuple
     """
-    extra = {
+    logic = {
         "c": color,
         "b": brightness,
         "r": range,
@@ -421,7 +426,8 @@ def create_spotlight(
         "ViewNodes": []
     }
 
-    return create_base_item(prefab_name="SpotLight", pos=pos, rot=rot, extra_data=extra)
+    item = create_base_item(prefab_name="SpotLight", pos=pos, rot=rot)
+    return (item, logic)
 
 
 def create_blink_light(
@@ -431,7 +437,7 @@ def create_blink_light(
     range: float = 7.0,
     blink_duration: float = 1.0,
     blink_interval: float = 2.0
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create BlinkLight - animated flashing light.
 
@@ -444,9 +450,9 @@ def create_blink_light(
         blink_interval: Time between blinks (seconds)
 
     Returns:
-        BlinkLight item dict
+        (item_dict, logic_dict) tuple
     """
-    extra = {
+    logic = {
         "c": color,
         "b": brightness,
         "r": range,
@@ -456,7 +462,8 @@ def create_blink_light(
         "ViewNodes": []
     }
 
-    return create_base_item(prefab_name="BlinkLight", pos=pos, extra_data=extra)
+    item = create_base_item(prefab_name="BlinkLight", pos=pos)
+    return (item, logic)
 
 
 def create_npc(
@@ -467,7 +474,7 @@ def create_npc(
     animation: str = "",
     auto_popup: bool = True,
     rot: Tuple[float, float, float, float] = (0, 0, 0, 1)
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create NPC - interactive character with dialogue and AI.
 
@@ -483,9 +490,9 @@ def create_npc(
         rot: Quaternion rotation
 
     Returns:
-        GLBNPC item dict
+        (item_dict, logic_dict) tuple
     """
-    extra = {
+    logic = {
         "n": name,
         "a": animation,
         "p": personality,
@@ -497,13 +504,13 @@ def create_npc(
         "ViewNodes": []
     }
 
-    return create_base_item(
+    item = create_base_item(
         prefab_name="GLBNPC",
         pos=pos,
         rot=rot,
-        content_string=glb_url,
-        extra_data=extra
+        content_string=glb_url
     )
+    return (item, logic)
 
 
 def create_glb(
@@ -513,7 +520,7 @@ def create_glb(
     rot: Tuple[float, float, float, float] = (0, 0, 0, 1),
     shadows: bool = True,
     collider: bool = True
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create GLB - custom 3D model.
 
@@ -526,23 +533,23 @@ def create_glb(
         collider: True = solid, False = players pass through
 
     Returns:
-        GLB item dict
+        (item_dict, logic_dict) tuple
     """
-    extra = {"Tasks": [], "ViewNodes": []}
+    logic = {"Tasks": [], "ViewNodes": []}
 
     if not shadows:
-        extra["s"] = False
+        logic["s"] = False
     if not collider:
-        extra["c"] = False
+        logic["c"] = False
 
-    return create_base_item(
+    item = create_base_item(
         prefab_name="GLB",
         pos=pos,
         rot=rot,
         scale=scale,
-        content_string=glb_url,
-        extra_data=extra
+        content_string=glb_url
     )
+    return (item, logic)
 
 
 def create_image(
@@ -553,7 +560,7 @@ def create_image(
     transparent: bool = False,
     borderless: bool = False,
     emission: float = 0.0
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create Image - 2D image in 3D space.
 
@@ -561,32 +568,32 @@ def create_image(
         pos: World position (x, y, z)
         image_url: Publicly hosted image URL
         scale: (width, height, thickness). Keep z thin (0.03)
-        rot: Quaternion rotation. NOTE: images lie flat by default —
+        rot: Quaternion rotation. NOTE: images lie flat by default --
              use quaternion_from_euler(pitch=90) from portals_utils to stand upright
         transparent: True = respect PNG transparency
         borderless: True = no frame around image
         emission: Glow intensity. 0.0 = none
 
     Returns:
-        DefaultPainting item dict
+        (item_dict, logic_dict) tuple
     """
-    extra = {"Tasks": [], "ViewNodes": []}
+    logic = {"Tasks": [], "ViewNodes": []}
 
     if transparent:
-        extra["t"] = True
+        logic["t"] = True
     if borderless:
-        extra["b"] = True
+        logic["b"] = True
     if emission > 0:
-        extra["e"] = emission
+        logic["e"] = emission
 
-    return create_base_item(
+    item = create_base_item(
         prefab_name="DefaultPainting",
         pos=pos,
         rot=rot,
         scale=scale,
-        content_string=image_url,
-        extra_data=extra
+        content_string=image_url
     )
+    return (item, logic)
 
 
 def create_video(
@@ -596,7 +603,7 @@ def create_video(
     rot: Tuple[float, float, float, float] = (0, 0, 0, 1),
     borderless: bool = False,
     emission: float = 0.0
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create Video - MP4 video in 3D space. Displays upright by default.
 
@@ -609,23 +616,23 @@ def create_video(
         emission: Glow intensity. 0.0 = none
 
     Returns:
-        DefaultVideo item dict
+        (item_dict, logic_dict) tuple
     """
-    extra = {"Tasks": [], "ViewNodes": []}
+    logic = {"Tasks": [], "ViewNodes": []}
 
     if borderless:
-        extra["b"] = True
+        logic["b"] = True
     if emission > 0:
-        extra["e"] = emission
+        logic["e"] = emission
 
-    return create_base_item(
+    item = create_base_item(
         prefab_name="DefaultVideo",
         pos=pos,
         rot=rot,
         scale=scale,
-        content_string=video_url,
-        extra_data=extra
+        content_string=video_url
     )
+    return (item, logic)
 
 
 def create_gun(
@@ -638,7 +645,7 @@ def create_gun(
     infinite_ammo: bool = False,
     automatic: bool = False,
     color: str = "000000"
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create Gun - pickupable weapon.
 
@@ -654,9 +661,9 @@ def create_gun(
         color: Gun model color (6-char hex, no #)
 
     Returns:
-        Gun item dict
+        (item_dict, logic_dict) tuple
     """
-    extra = {
+    logic = {
         "weaponType": weapon_type,
         "maxDamage": max_damage,
         "minDamage": min_damage,
@@ -670,11 +677,12 @@ def create_gun(
     }
 
     if infinite_ammo:
-        extra["isInfinityAmmo"] = True
+        logic["isInfinityAmmo"] = True
     if automatic:
-        extra["automaticWeapon"] = True
+        logic["automaticWeapon"] = True
 
-    return create_base_item(prefab_name="Gun", pos=pos, extra_data=extra)
+    item = create_base_item(prefab_name="Gun", pos=pos)
+    return (item, logic)
 
 
 def create_destructible(
@@ -684,7 +692,7 @@ def create_destructible(
     max_health: int = 100,
     respawn_time: float = 10.0,
     multiplayer: bool = False
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create Destructible - 3D model that can be destroyed by weapons.
 
@@ -697,9 +705,9 @@ def create_destructible(
         multiplayer: True = shared destruction state across players
 
     Returns:
-        Destructible item dict
+        (item_dict, logic_dict) tuple
     """
-    extra = {
+    logic = {
         "maxHealth": max_health,
         "respawnTime": respawn_time,
         "destructionEffect": {
@@ -718,15 +726,15 @@ def create_destructible(
     }
 
     if multiplayer:
-        extra["multiplayer"] = True
+        logic["multiplayer"] = True
 
-    return create_base_item(
+    item = create_base_item(
         prefab_name="Destructible",
         pos=pos,
         scale=scale,
-        content_string=glb_url,
-        extra_data=extra
+        content_string=glb_url
     )
+    return (item, logic)
 
 
 def create_elemental(
@@ -734,7 +742,7 @@ def create_elemental(
     element_type: str = "lava",
     scale: Tuple[float, float, float] = (1, 1, 1),
     collider: bool = True
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create Elemental Cube - animated elemental block (lava, water).
 
@@ -745,9 +753,9 @@ def create_elemental(
         collider: True = solid, False = pass through
 
     Returns:
-        9Cube item dict
+        (item_dict, logic_dict) tuple
     """
-    extra = {
+    logic = {
         "GLBUrl": "https://dwh7ute75zx34.cloudfront.net/Models/08_09/9SliceBlock_Rig_Empty.glb",
         "c": "",
         "Tasks": [],
@@ -755,15 +763,15 @@ def create_elemental(
     }
 
     if not collider:
-        extra["nc"] = True
+        logic["nc"] = True
 
-    return create_base_item(
+    item = create_base_item(
         prefab_name="9Cube",
         pos=pos,
         scale=scale,
-        content_string=element_type,
-        extra_data=extra
+        content_string=element_type
     )
+    return (item, logic)
 
 
 def create_addressable(
@@ -771,7 +779,7 @@ def create_addressable(
     effect_name: str,
     scale: Tuple[float, float, float] = (1, 1, 1),
     rot: Tuple[float, float, float, float] = (0, 0, 0, 1)
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create Addressable VFX - built-in particle/visual effects.
 
@@ -783,7 +791,7 @@ def create_addressable(
         rot: Quaternion rotation
 
     Returns:
-        Addressable item dict
+        (item_dict, logic_dict) tuple
 
     Known effect names (not exhaustive):
         Particles: DustParticles, ParticlesExplosion1-5
@@ -798,16 +806,16 @@ def create_addressable(
     """
     content_string = f"FurnitureAddressables/{effect_name}"
 
-    extra = {"Tasks": [], "ViewNodes": []}
+    logic = {"Tasks": [], "ViewNodes": []}
 
-    return create_base_item(
+    item = create_base_item(
         prefab_name="Addressable",
         pos=pos,
         rot=rot,
         scale=scale,
-        content_string=content_string,
-        extra_data=extra
+        content_string=content_string
     )
+    return (item, logic)
 
 
 def create_leaderboard(
@@ -816,7 +824,7 @@ def create_leaderboard(
     score_label: str = "Score",
     time_based: bool = False,
     style: str = "blue"
-) -> Dict:
+) -> Tuple[Dict, Dict]:
     """
     Create Leaderboard - displays player rankings.
 
@@ -828,7 +836,7 @@ def create_leaderboard(
         style: "blue", "orange", or "screen"
 
     Returns:
-        Leaderboard item dict
+        (item_dict, logic_dict) tuple
     """
     styles = {
         "blue": "~1slpk_Leaderboard_Black_NeonBlue.glb?alt=media&token=8b518415-b51b-4264-ae7e-d49465260757",
@@ -836,7 +844,7 @@ def create_leaderboard(
         "screen": "https://firebasestorage.googleapis.com/v0/b/portals-1b487.appspot.com/o/GLBs%2F00L_screenLeaderboard.glb?alt=media&token=b1f9eef5-ee70-4d5e-a9ee-3e8e2ef26e59?screenOnly=true"
     }
 
-    extra = {
+    logic = {
         "gn": game_name,
         "ln": score_label,
         "ci": "",
@@ -845,11 +853,11 @@ def create_leaderboard(
     }
 
     if time_based:
-        extra["tb"] = True
+        logic["tb"] = True
 
-    return create_base_item(
+    item = create_base_item(
         prefab_name="Leaderboard",
         pos=pos,
-        content_string=styles.get(style, styles["blue"]),
-        extra_data=extra
+        content_string=styles.get(style, styles["blue"])
     )
+    return (item, logic)

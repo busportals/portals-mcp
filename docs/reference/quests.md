@@ -233,7 +233,7 @@ def generate_quest_id():
 
 **Creating quest pairs:**
 ```python
-from scripts.portals_utils import create_quest_pair
+from portals_utils import create_quest_pair
 
 # Basic quest (single player, no special config)
 q = create_quest_pair(0, "collect", creator_uid)
@@ -278,30 +278,27 @@ quests.update(q2["entries"])
 
 ## Linking Effects to Quests
 
-Items subscribe to quest state changes via `TaskEffectorSubscription` in their `extraData.Tasks` array.
+Items subscribe to quest state changes via `TaskEffectorSubscription` in their `logic[itemId].Tasks` array. In the new logic-separated format, interactions live in a separate `logic` dict, not embedded as `extraData` inside items.
 
 **Example: Cube that moves when quest activates**
 ```python
-from scripts.portals_effects import create_move_effect
+from portals_effects import add_task_to_logic, quest_effector, effector_move_to_spot
+from portals_core import create_cube
 
 # Create quest
 quest = create_quest_pair(0, "activate", creator_uid)
 
-# Create cube
-cube = create_cube(pos=(0, 0.5, 0), scale=(2, 0.2, 2))
+# Create cube — returns (item, logic) tuple
+items[id_], logic[id_] = create_cube(pos=(0, 0.5, 0), scale=(2, 0.2, 2))
 
-# Add effect to cube's Tasks
-cube_extra = parse_extra_data(cube["extraData"])
-cube_extra["Tasks"].append(
-    create_move_effect(
-        quest_id=quest["quest_id"],
-        quest_name=quest["quest_name"],
-        target_state=1,  # Fires when quest becomes Active
-        position=(0, 5, 0),  # Move to y=5
-        duration=2.0
-    )
+# Add effect to the item's logic entry
+task = quest_effector(
+    quest_id=quest["quest_id"],
+    quest_name=quest["quest_name"],
+    target_state=1,  # Fires when quest becomes Active
+    effector=effector_move_to_spot(position=(0, 5, 0), duration=2.0)
 )
-cube["extraData"] = format_extra_data(cube_extra)
+add_task_to_logic(logic[id_], task)
 ```
 
 ## 3-State Effect Pattern
@@ -309,35 +306,28 @@ cube["extraData"] = format_extra_data(cube_extra)
 Items can have different effects for each quest state:
 
 ```python
+from portals_effects import add_tasks_to_logic, quest_effector, effector_move_to_spot
+
 # State 0 (Not Active) - cube at origin
-effect_state_0 = create_move_effect(
-    quest_id=quest["quest_id"],
-    quest_name=quest["quest_name"],
-    target_state=0,  # No TargetState field for state 0!
-    position=(0, 0.5, 0),
-    duration=0.0  # Instant
+effect_state_0 = quest_effector(
+    quest["quest_id"], quest["quest_name"], 0,
+    effector_move_to_spot(position=(0, 0.5, 0), duration=0.0)
 )
 
 # State 1 (Active) - cube rises
-effect_state_1 = create_move_effect(
-    quest_id=quest["quest_id"],
-    quest_name=quest["quest_name"],
-    target_state=1,
-    position=(0, 5, 0),
-    duration=2.0
+effect_state_1 = quest_effector(
+    quest["quest_id"], quest["quest_name"], 1,
+    effector_move_to_spot(position=(0, 5, 0), duration=2.0)
 )
 
 # State 2 (Completed) - cube returns
-effect_state_2 = create_move_effect(
-    quest_id=quest["quest_id"],
-    quest_name=quest["quest_name"],
-    target_state=2,
-    position=(0, 0.5, 0),
-    duration=1.0
+effect_state_2 = quest_effector(
+    quest["quest_id"], quest["quest_name"], 2,
+    effector_move_to_spot(position=(0, 0.5, 0), duration=1.0)
 )
 
-# Add all 3 to cube's Tasks
-cube_extra["Tasks"].extend([effect_state_0, effect_state_1, effect_state_2])
+# Add all 3 to the item's logic entry
+add_tasks_to_logic(logic[id_], [effect_state_0, effect_state_1, effect_state_2])
 ```
 
 **IMPORTANT:** State 0 effects have NO `TargetState` field (omitted entirely).
@@ -348,15 +338,15 @@ cube_extra["Tasks"].extend([effect_state_0, effect_state_1, effect_state_2])
 
 1. **Click to advance:**
 ```python
-from scripts.portals_effects import create_click_trigger
+from portals_effects import add_task_to_logic, quest_trigger, trigger_on_click
 
 # Click cube to activate quest
-trigger = create_click_trigger(
-    quest_id=quest["quest_id"],
-    quest_name=quest["quest_name"],
-    target_state=111  # Not Active → Active (encoded value)
+task = quest_trigger(
+    quest["quest_id"], quest["quest_name"],
+    target_state=111,  # Not Active → Active (encoded value)
+    trigger=trigger_on_click()
 )
-cube_extra["Tasks"].append(trigger)
+add_task_to_logic(logic[id_], task)
 ```
 
 2. **Auto-start on player login:**

@@ -42,6 +42,9 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 
+sys.path.insert(0, str(Path(__file__).parent.parent / "lib"))
+from portals_utils import normalize_snapshot
+
 
 # ============================================================================
 # Filtering Functions
@@ -261,6 +264,8 @@ def query_items(
     path = Path(snapshot_path)
     with open(path, "r", encoding="utf-8") as f:
         snapshot = json.load(f)
+
+    normalize_snapshot(snapshot)  # Merge logic into items if new format
 
     room_items: dict = snapshot.get("roomItems", {})
 

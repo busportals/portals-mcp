@@ -30,6 +30,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+sys.path.insert(0, str(Path(__file__).parent.parent / "lib"))
+from portals_utils import normalize_snapshot
+
 
 # ============================================================================
 # CONSTANTS
@@ -831,6 +834,9 @@ def generate_index(snapshot_path: str, output_path: Optional[str] = None) -> str
     # Load snapshot
     with open(snapshot_path, "r", encoding="utf-8") as f:
         data = json.load(f)
+
+    # Normalize format (handle both legacy and new logic-separated format)
+    normalize_snapshot(data)
 
     room_items: Dict[str, Dict] = data.get("roomItems", {})
     settings: Dict[str, Any] = data.get("settings", {})

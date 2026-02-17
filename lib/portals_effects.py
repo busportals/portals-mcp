@@ -6,7 +6,7 @@ Architecture:
 - Effector functions return the inner {"$type": "...", ...} payload
 - Trigger functions return the inner {"$type": "..."} payload
 - Wrapper functions assemble these into TaskEffectorSubscription / TaskTriggerSubscription
-- Helper functions attach tasks to items
+- Helper functions attach tasks to logic dicts
 
 Usage:
     from portals_effects import *
@@ -16,18 +16,17 @@ Usage:
         trigger=trigger_on_click(),
         effector=effector_notification("Hello!", "00FF00")
     )
-    add_task_to_item(my_cube, task)
+    add_task_to_logic(my_logic, task)
 
     # Quest-linked: effect fires when quest completes
     task = quest_effector(quest_id, quest_name, 2, effector_hide())
-    add_task_to_item(my_cube, task)
+    add_task_to_logic(my_logic, task)
 
     # Quest-linked: trigger advances quest state
     task = quest_trigger(quest_id, quest_name, 181, trigger_on_click())
-    add_task_to_item(my_cube, task)
+    add_task_to_logic(my_logic, task)
 """
 
-import json
 import uuid
 from typing import Dict, List, Optional
 
@@ -1060,25 +1059,21 @@ def quest_trigger(
 # HELPER FUNCTIONS
 # ============================================================================
 
-def add_task_to_item(item: Dict, task: Dict) -> None:
+def add_task_to_logic(logic: Dict, task: Dict) -> None:
     """
-    Add a task (trigger or effect subscription) to an item's Tasks array.
-    Modifies item in-place.
+    Add a task (trigger or effect subscription) to a logic entry's Tasks array.
+    Modifies logic dict in-place.
     """
-    extra = json.loads(item["extraData"])
-    if "Tasks" not in extra:
-        extra["Tasks"] = []
-    extra["Tasks"].append(task)
-    item["extraData"] = json.dumps(extra, separators=(',', ':'))
+    if "Tasks" not in logic:
+        logic["Tasks"] = []
+    logic["Tasks"].append(task)
 
 
-def add_tasks_to_item(item: Dict, tasks: List[Dict]) -> None:
+def add_tasks_to_logic(logic: Dict, tasks: List[Dict]) -> None:
     """
-    Add multiple tasks to an item's Tasks array.
-    Modifies item in-place.
+    Add multiple tasks to a logic entry's Tasks array.
+    Modifies logic dict in-place.
     """
-    extra = json.loads(item["extraData"])
-    if "Tasks" not in extra:
-        extra["Tasks"] = []
-    extra["Tasks"].extend(tasks)
-    item["extraData"] = json.dumps(extra, separators=(',', ':'))
+    if "Tasks" not in logic:
+        logic["Tasks"] = []
+    logic["Tasks"].extend(tasks)

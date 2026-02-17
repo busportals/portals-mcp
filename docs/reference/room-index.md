@@ -126,15 +126,11 @@ Automatically re-runs the indexer to update `room_index.md`.
 2. `python3 tools/index_room.py games/{room-id}/snapshot.json`
 3. Read `room_index.md` — **not** snapshot.json
 
-## Data Format Compatibility
+## Data Format & Normalization
 
-The tools handle both data formats transparently:
+All three tools auto-normalize legacy snapshots via `normalize_snapshot()` from `portals_utils.py`. This means:
 
-| Concept | Our generate.py format | MCP/Portals format |
-|---------|----------------------|-------------------|
-| Interactions | `item.interactions[]` | `item.extraData.Tasks[]` |
-| Parent | `item.p` | `item.parentItemID` |
-| Scale | `item.scl` | `item.scale` |
-| Trigger | `interaction.trigger.$type` | `Task.Trigger.$type` |
-| Effect | `interaction.effects[].$type` | `Task.DirectEffector.Effector.$type` |
-| Quest-driven | N/A | `TaskEffectorSubscription` (no trigger) |
+- **New format** (logic separated): `logic` is a top-level key alongside `roomItems`. Items contain only spatial/visual data; interactions and type config live in `logic[itemId]`.
+- **Legacy format** (embedded extraData): Interactions were embedded as `extraData` inside each item. `normalize_snapshot()` merges `logic` back into items as `extraData` so tool internals work unchanged.
+
+You do not need to worry about which format a snapshot uses. The tools detect and handle both automatically. When generating new rooms, always use the new separated format (`roomItems` + `logic`).

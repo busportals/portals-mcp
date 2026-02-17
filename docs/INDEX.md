@@ -151,11 +151,34 @@ The top-level room data structure pushed via MCP must follow this exact format:
   "roomItems": { ... },
   "settings": { ... },
   "roomTasks": {"Tasks": []},
-  "quests": { ... }
+  "quests": { ... },
+  "logic": { ... }
 }
 ```
 
-**`roomTasks` MUST be `{"Tasks": []}` — NOT `{}`.** An empty dict breaks room loading. Even if you have no room tasks, the `Tasks` key with an empty array is required.
+- **`roomTasks` MUST be `{"Tasks": []}` — NOT `{}`.** An empty dict breaks room loading. Even if you have no room tasks, the `Tasks` key with an empty array is required.
+- **`logic` is a top-level key** containing interaction and type-config data, keyed by item ID. It is NOT embedded as `extraData` inside items. When generating rooms, `portals_core.py` creators return `(item, logic)` tuples — items go into `roomItems`, logic entries go into `logic`.
+
+### Logic Separation
+
+Interactions (triggers, effects, quest subscriptions) and type-specific configuration live in a **separate `logic` top-level key**, not embedded as `extraData` in items. Each key in `logic` is an item ID, and its value is the data that was previously in `extraData`.
+
+```json
+{
+  "roomItems": {
+    "1": {"prefabName": "ResizableCube", "pos": {"x": 0, "y": 0.5, "z": 0}, ...}
+  },
+  "logic": {
+    "1": {
+      "Tasks": [
+        {"$type": "TaskTriggerSubscription", "Trigger": {"$type": "OnClickEvent"}, ...}
+      ]
+    }
+  }
+}
+```
+
+Use `add_task_to_logic(logic[item_id], task)` from `portals_effects.py` to wire interactions. The room index tools auto-normalize legacy snapshots (with embedded `extraData`) via `normalize_snapshot()`.
 
 ### FunctionEffector Task Names
 
@@ -180,6 +203,6 @@ Some GLB files (especially those exported from Unity via UnityGLTF, such as Kenn
 ## Python Generation Libraries
 
 Located in `lib/`:
-- `portals_core.py` — Item generators (cubes, NPCs, lights, etc.)
-- `portals_effects.py` — Trigger/effect builders
-- `portals_utils.py` — MCP wrappers, quest helpers
+- `portals_core.py` — Item generators (cubes, NPCs, lights, etc.). All creators return `(item, logic)` tuples.
+- `portals_effects.py` — Trigger/effect builders. Use `add_task_to_logic(logic, task)` to wire interactions.
+- `portals_utils.py` — Quest helpers, validation, `normalize_snapshot()`, `split_logic_from_items()`

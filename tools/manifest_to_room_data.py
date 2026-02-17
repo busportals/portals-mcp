@@ -65,14 +65,18 @@ def load_cdn_urls(cdn_urls_path: str) -> dict:
     return data
 
 
-def manifest_object_to_room_item(obj: dict, cdn_url: str) -> dict:
+def manifest_object_to_room_item(obj: dict, cdn_url: str) -> tuple:
     """
-    Convert a single manifest object into a Portals room item.
+    Convert a single manifest object into a Portals room item and its logic data.
 
     The manifest is expected to provide position, rotation, and scale
     already converted to Portals coordinate space (Y-up left-handed).
+
+    Returns:
+        (item_dict, logic_dict) — the item without extraData, and the
+        separated logic entry for this item.
     """
-    return {
+    item = {
         "prefabName": "GLB",
         "parentItemID": 0,
         "currentEditornetId": 0,
@@ -87,7 +91,6 @@ def manifest_object_to_room_item(obj: dict, cdn_url: str) -> dict:
         "hoverTitle": "",
         "hoverBodyContent": "",
         "ImageInteractivityDetails": {"buttonText": "", "buttonURL": ""},
-        "extraData": json.dumps({"events": [], "ViewNodes": []}),
         "sessionData": "",
         "instanceId": "",
         "placed": True,
@@ -95,14 +98,22 @@ def manifest_object_to_room_item(obj: dict, cdn_url: str) -> dict:
         "superLocked": False,
     }
 
+    logic = {"Tasks": [], "ViewNodes": []}
+
+    return item, logic
+
 
 def build_room_data(manifest_objects: list, cdn_urls: dict) -> dict:
     """
     Build a complete Portals room data dict from manifest objects.
 
-    Returns the room data envelope with roomItems, settings, roomTasks, quests.
+    Returns the room data envelope with roomItems, logic, settings,
+    roomTasks, and quests.  The ``logic`` dict holds per-item interaction
+    and view-node data, keyed by item ID — this matches the separated
+    format used by the MCP API.
     """
     room_items = {}
+    logic = {}
     warnings = []
 
     for i, obj in enumerate(manifest_objects):
@@ -115,7 +126,9 @@ def build_room_data(manifest_objects: list, cdn_urls: dict) -> dict:
             name = obj.get("name", f"object #{i}")
             warnings.append(f"WARNING: No CDN URL found for '{glb_file}' (object: {name}) — using empty string")
 
-        room_items[item_id] = manifest_object_to_room_item(obj, cdn_url)
+        item, item_logic = manifest_object_to_room_item(obj, cdn_url)
+        room_items[item_id] = item
+        logic[item_id] = item_logic
 
     # Print warnings
     for w in warnings:
@@ -123,6 +136,7 @@ def build_room_data(manifest_objects: list, cdn_urls: dict) -> dict:
 
     room_data = {
         "roomItems": room_items,
+        "logic": logic,
         "settings": {
             "roomBase": "BlankScene",
             "isNight": False,

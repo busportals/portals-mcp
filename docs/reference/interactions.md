@@ -7,7 +7,19 @@ There are two systems for triggering effects on items:
 1. **Basic Interactions** -- direct trigger to effect. Not persistent (no state stored). Fires immediately when triggered.
 2. **Quest-Driven Task Effects** -- tied to quest states (Not Active, Active, Completed). Persistent -- state is stored and survives page reloads.
 
-Both go in the `extraData.Tasks` array.
+Both go in `logic[itemId].Tasks` -- a separate top-level `logic` dict keyed by item ID, not embedded inside items. In the old format these lived in `extraData.Tasks` on each item; the new format separates logic from spatial data.
+
+**Adding interactions in Python:**
+```python
+from portals_effects import add_task_to_logic, basic_interaction, trigger_on_click, effector_notification
+
+# portals_core creators return (item, logic) tuples
+items[id_], logic[id_] = create_cube(pos=(0, 0.5, 0))
+
+# Wire an interaction into the logic entry
+task = basic_interaction(trigger_on_click(), effector_notification("Hello!", "00FF00"))
+add_task_to_logic(logic[id_], task)
+```
 
 ---
 
@@ -75,7 +87,7 @@ A `TaskTriggerSubscription` can also directly change a **quest state** on click,
 
 ## Quest-Driven Task Effects
 
-Animations driven by **quests**. Each quest has states (Not Active, Active, Completed). Items subscribe to quest state changes via `TaskEffectorSubscription` entries in their `extraData.Tasks` array.
+Animations driven by **quests**. Each quest has states (Not Active, Active, Completed). Items subscribe to quest state changes via `TaskEffectorSubscription` entries in their `logic[itemId].Tasks` array.
 
 ### Single Player vs Multiplayer Quests
 

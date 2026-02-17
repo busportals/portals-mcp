@@ -52,8 +52,8 @@ Use the modular build workflow (`docs/workflows/modular-build-workflow.md`):
 1. Analyze the design — estimate item counts, identify component boundaries
 2. Write `BUILD_MANIFEST.md` — one entry per component with scope, dependencies, docs needed
 3. Write `generate.py` — thin compositor that imports components (~40-80 lines)
-4. **Delegate each component to a subagent** — each gets its relevant design section, docs, and catalog data. Dispatch independent ones in parallel. **Subagents return code as their response; the main conversation writes the files** (subagents cannot reliably write files due to permission constraints).
-5. Run `generate.py` to produce `snapshot.json`
+4. **Delegate each component to a subagent** — each gets its relevant design section, docs, and catalog data. Dispatch independent ones in parallel. **Subagents return code as their response; the main conversation writes the files** (subagents cannot reliably write files due to permission constraints). For complex builds, scene subagents handle spatial placement while logic subagents handle interactions and quests, running in parallel.
+5. Run `generate.py` to produce `snapshot.json` — output structure is `{ roomItems, logic, settings, roomTasks, quests }` where `logic` is a separate top-level key containing all item `extraData` (interactions/tasks), keyed by item ID
 6. **Validate** — `python tools/validate_room.py games/{room-id}/snapshot.json`. Fix any errors before pushing.
 7. Push to room via MCP
 8. Return room URL: `https://theportal.to/?room={room-id}`
@@ -104,6 +104,7 @@ A game is not done until it has ALL of these:
 - **Delegate to subagents.** Never write component code in the main conversation.
 - **Use public assets.** MP3s for audio, GLBs (~15k triangles, 1-2MB), images — all public URLs.
 - **Always use the full asset catalog workflow for GLB placement.** Every step, every time. See below.
+- **MCP and generate.py use the same format.** Both use `{ roomItems, logic, settings, roomTasks, quests }` with `logic` as a separate top-level key. Items in `roomItems` do not contain `extraData` — all interaction data lives in `logic`, keyed by item ID.
 
 ## MCP Tools
 
@@ -112,8 +113,8 @@ Authenticate before any other tool. The `authenticate` tool opens a browser wind
 | Tool | Purpose |
 |------|---------|
 | `authenticate` | Opens browser for login. Required first. |
-| `get_room_data` | Download all room data (items, settings, tasks, quests) to a temp JSON file. Returns file path — use Read to access. |
-| `set_room_data` | Replace entire room data from a local JSON file. Structure: `{ roomItems, settings, roomTasks, quests }`. **Read first.** |
+| `get_room_data` | Download all room data to a temp JSON file. Returns file path — use Read to access. Structure: `{ roomItems, logic, settings, roomTasks, quests }`. The `logic` object contains `extraData` keyed by item ID, stripped from `roomItems`. |
+| `set_room_data` | Replace entire room data from a local JSON file. Structure: `{ roomItems, logic, settings, roomTasks, quests }`. Items in `roomItems` do NOT contain `extraData` — all interaction/task data lives in the separate `logic` object. **Read first.** |
 | `update_room_settings` | Update room name, description, cover image, loading screen images, visibility. |
 | `create_room` | Create a new room from a template. Templates: `art-gallery`, `blank`, `conference-center`, `conference-stage`, `Cowboy-saloon`, `large-apartment`, `large-art-gallery`, `large-city-district`, `lecture-hall`, `medium-apartment-1`, `medium-city-district`, `small-apartment-1`, `small-city-district`, `spaceship`, `studio-apartment-1`, `studio-apartment-2`, `tropical-paradise`, `volcano-park`. |
 | `duplicate_room` | Duplicate an existing room with all items, settings, tasks, and quests. |
@@ -218,8 +219,8 @@ Load docs on demand. This section tells you exactly what exists and when to read
 
 | Library | What it provides |
 |---------|-----------------|
-| `portals_core.py` | Item generators — cubes, text, spawns, triggers, GLBs, collectibles, lights, NPCs, etc. |
-| `portals_effects.py` | 63 effect builders + 21 trigger builders for the Tasks system. |
+| `portals_core.py` | Item generators — cubes, text, spawns, triggers, GLBs, collectibles, lights, NPCs, etc. Creators return `(item, logic)` tuples. |
+| `portals_effects.py` | 63 effect builders + 21 trigger builders. Uses `add_task_to_logic(logic, task)` to attach tasks to logic objects. |
 | `portals_utils.py` | Quest helpers, rotation math, validation, data formatting, build summaries. |
 | `modular_helpers.py` | `ModularKit` class, `rotated_edges()`, `find_piece()` for modular kit placement. |
 | `board_helpers.py` | Logic board visualization — circuit-board flowchart nodes, connectors, pulses. |
@@ -246,14 +247,14 @@ When delegating to subagents, pass them the specific docs they need. Don't make 
 **Component subagent** (writing a component file for `generate.py`):
 - The relevant section of `design.md` for their component
 - `docs/workflows/component-template.md` — structure to follow
-- `lib/portals_core.py` and `lib/portals_effects.py` — import reference
+- `lib/portals_core.py` and `lib/portals_effects.py` — import reference. Note: `portals_core.py` creators return `(item, logic)` tuples (item dict without `extraData`, logic dict with tasks/interactions). `portals_effects.py` uses `add_task_to_logic(logic, task)` to attach tasks to the logic object.
 - `catalog.json` — if placing GLB models (for real dimensions)
 - The relevant item type doc from `docs/reference/items/` for field schemas
 - `docs/reference/interactions.md` — if the component has triggers/effects
 - `docs/reference/quests.md` — if the component uses quests
 
 **Quality review subagent** (reviewing a build for polish):
-- The build summary (from `portals_utils.generate_build_summary()`)
+- The build summary (from `portals_utils.generate_build_summary(game_name, items, logic, quests, ...)` — note the separate `items` and `logic` arguments)
 - `docs/workflows/quality-passes.md` — review criteria and process
 - The relevant section of `design.md` — to check intent vs. reality
 
@@ -262,8 +263,13 @@ When delegating to subagents, pass them the specific docs they need. Don't make 
 - `docs/reference/interactions.md` — trigger/effect patterns
 - `docs/reference/quests.md` — quest state management
 
-**Scene layout subagent** (arranging items in 3D space):
+**Scene subagent** (spatial placement — items only, no logic):
 - `catalog.json` — real dimensions for all GLBs
 - `docs/workflows/scene-design.md` — density targets, composition principles
 - `docs/reference/movement-reference.md` — player dimensions, jump distances
 - `docs/reference/parent-child.md` — if using item hierarchies
+
+**Logic subagent** (interactions and quests — logic only, no spatial placement):
+- `docs/reference/interactions.md` — trigger/effect patterns, task structure
+- `docs/reference/quests.md` — 3-state quest system, persistence
+- `docs/workflows/function-effects-reference.md` — NCalc expressions, variables, conditionals, timers

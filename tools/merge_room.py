@@ -16,19 +16,26 @@ Patch format (all keys optional):
         "add_items":       {"501": {...}, "502": {...}},
         "modify_items":    {"47": {"pos": {...}, "interactions": [...]}},
         "remove_items":    ["12", "13", "14"],
+        "add_logic":       {"501": {"Tasks": [...], "col": "FF0000"}},
+        "modify_logic":    {"47": {"col": "00FF00"}},
+        "remove_logic":    ["12", "13"],
         "add_quests":      {"quest-uuid": {...}},
         "remove_quests":   ["quest-uuid-old"],
         "modify_settings": {"Variables": [...]}
     }
 
-Operation order: remove -> modify -> add
+Operation order: remove -> modify -> add (items first, then logic, then quests, then settings)
 """
 
 import argparse
 import json
 import os
 import sys
+from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "lib"))
+from portals_utils import normalize_snapshot, split_logic_from_items
 
 
 # ============================================================================
@@ -37,6 +44,7 @@ from typing import Any
 
 VALID_PATCH_KEYS = {
     "add_items", "modify_items", "remove_items",
+    "add_logic", "modify_logic", "remove_logic",
     "add_quests", "remove_quests", "modify_settings",
 }
 
@@ -57,6 +65,12 @@ def validate_patch_structure(patch: dict) -> None:
         raise ValueError("add_quests must be a dict of {quest_id: quest_data}")
     if "remove_quests" in patch and not isinstance(patch["remove_quests"], list):
         raise ValueError("remove_quests must be a list of quest ID strings")
+    if "add_logic" in patch and not isinstance(patch["add_logic"], dict):
+        raise ValueError("add_logic must be a dict of {item_id: logic_dict}")
+    if "modify_logic" in patch and not isinstance(patch["modify_logic"], dict):
+        raise ValueError("modify_logic must be a dict of {item_id: logic_dict}")
+    if "remove_logic" in patch and not isinstance(patch["remove_logic"], list):
+        raise ValueError("remove_logic must be a list of item ID strings")
     if "modify_settings" in patch and not isinstance(patch["modify_settings"], dict):
         raise ValueError("modify_settings must be a dict of settings fields")
 
@@ -242,7 +256,7 @@ def apply_merge(snapshot: dict, patch: dict) -> dict:
     quests = snapshot.setdefault("quests", {})
     settings = snapshot.setdefault("settings", {})
 
-    # 1. remove_items
+    # 1. remove_items (also removes their embedded logic/extraData)
     for rid in patch.get("remove_items", []):
         rid = str(rid)
         room_items.pop(rid, None)
@@ -272,6 +286,36 @@ def apply_merge(snapshot: dict, patch: dict) -> dict:
     for key, value in patch.get("modify_settings", {}).items():
         settings[key] = value
 
+    # 7. remove_logic — remove extraData from items
+    for rid in patch.get("remove_logic", []):
+        rid = str(rid)
+        if rid in room_items:
+            room_items[rid].pop("extraData", None)
+
+    # 8. modify_logic — shallow merge into existing extraData
+    for mid, logic_dict in patch.get("modify_logic", {}).items():
+        mid = str(mid)
+        if mid in room_items:
+            item = room_items[mid]
+            existing_ed = item.get("extraData", "")
+            if isinstance(existing_ed, str) and existing_ed:
+                try:
+                    parsed = json.loads(existing_ed)
+                except (json.JSONDecodeError, ValueError):
+                    parsed = {}
+            elif isinstance(existing_ed, dict):
+                parsed = existing_ed
+            else:
+                parsed = {}
+            parsed.update(logic_dict)
+            item["extraData"] = json.dumps(parsed, separators=(',', ':'))
+
+    # 9. add_logic — add extraData to items (serialize as JSON string)
+    for aid, logic_dict in patch.get("add_logic", {}).items():
+        aid = str(aid)
+        if aid in room_items:
+            room_items[aid]["extraData"] = json.dumps(logic_dict, separators=(',', ':'))
+
     return snapshot
 
 
@@ -292,6 +336,9 @@ def build_dry_run_report(snapshot: dict, patch: dict) -> str:
     remove_ids = [str(x) for x in patch.get("remove_items", [])]
     modify_map = patch.get("modify_items", {})
     add_map = patch.get("add_items", {})
+    remove_logic_ids = [str(x) for x in patch.get("remove_logic", [])]
+    modify_logic_map = patch.get("modify_logic", {})
+    add_logic_map = patch.get("add_logic", {})
     remove_quest_ids = [str(x) for x in patch.get("remove_quests", [])]
     add_quest_map = patch.get("add_quests", {})
     modify_settings = patch.get("modify_settings", {})
@@ -324,6 +371,21 @@ def build_dry_run_report(snapshot: dict, patch: dict) -> str:
     if add_map:
         has_changes = True
         lines.append(f"Would add {len(add_map)} item(s): {', '.join(add_map.keys())}")
+
+    # Remove logic
+    if remove_logic_ids:
+        has_changes = True
+        lines.append(f"Would remove logic from {len(remove_logic_ids)} item(s): {', '.join(remove_logic_ids)}")
+
+    # Modify logic
+    if modify_logic_map:
+        has_changes = True
+        lines.append(f"Would modify logic on {len(modify_logic_map)} item(s): {', '.join(modify_logic_map.keys())}")
+
+    # Add logic
+    if add_logic_map:
+        has_changes = True
+        lines.append(f"Would add logic to {len(add_logic_map)} item(s): {', '.join(add_logic_map.keys())}")
 
     # Remove quests
     if remove_quest_ids:
@@ -381,6 +443,9 @@ def build_summary(
     removed_items = len(patch.get("remove_items", []))
     modified_items = len(patch.get("modify_items", {}))
     added_items = len(patch.get("add_items", {}))
+    removed_logic = len(patch.get("remove_logic", []))
+    modified_logic = len(patch.get("modify_logic", {}))
+    added_logic = len(patch.get("add_logic", {}))
     removed_quests = len(patch.get("remove_quests", []))
     added_quests = len(patch.get("add_quests", {}))
     modified_settings = bool(patch.get("modify_settings"))
@@ -391,6 +456,8 @@ def build_summary(
     removed_parts = []
     if removed_items:
         removed_parts.append(f"{removed_items} item(s)")
+    if removed_logic:
+        removed_parts.append(f"logic from {removed_logic} item(s)")
     if removed_quests:
         removed_parts.append(f"{removed_quests} quest(s)")
     if removed_parts:
@@ -399,6 +466,8 @@ def build_summary(
     modified_parts = []
     if modified_items:
         modified_parts.append(f"{modified_items} item(s)")
+    if modified_logic:
+        modified_parts.append(f"logic on {modified_logic} item(s)")
     if modified_settings:
         modified_parts.append("settings")
     if modified_parts:
@@ -407,6 +476,8 @@ def build_summary(
     added_parts = []
     if added_items:
         added_parts.append(f"{added_items} item(s)")
+    if added_logic:
+        added_parts.append(f"logic to {added_logic} item(s)")
     if added_quests:
         added_parts.append(f"{added_quests} quest(s)")
     if added_parts:
@@ -425,6 +496,9 @@ def build_summary(
         "removed_items": removed_items,
         "modified_items": modified_items,
         "added_items": added_items,
+        "removed_logic": removed_logic,
+        "modified_logic": modified_logic,
+        "added_logic": added_logic,
         "removed_quests": removed_quests,
         "added_quests": added_quests,
         "modified_settings": modified_settings,
@@ -476,6 +550,9 @@ def merge_room(
     with open(snapshot_path, "r", encoding="utf-8") as f:
         snapshot = json.load(f)
 
+    # Normalize: merge logic into items as extraData so processing code works
+    normalize_snapshot(snapshot)
+
     # Run safety checks
     errors, warnings = run_safety_checks(snapshot, patch_data)
 
@@ -516,6 +593,9 @@ def merge_room(
 
     # Apply merge
     apply_merge(snapshot, patch_data)
+
+    # Convert back to new format: split extraData out into separate logic key
+    split_logic_from_items(snapshot)
 
     # Write updated snapshot
     with open(snapshot_path, "w", encoding="utf-8") as f:

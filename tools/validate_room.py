@@ -22,7 +22,7 @@ from typing import Dict, List, Optional, Set
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "lib"))
 
-from portals_utils import validate_quest_name, validate_color, parse_extra_data
+from portals_utils import validate_quest_name, validate_color, parse_extra_data, normalize_snapshot
 
 
 # ============================================================================
@@ -299,6 +299,8 @@ def validate_top_level(data: dict) -> List[str]:
     """Validate top-level snapshot structure."""
     errors = []
     required_keys = {"roomItems", "settings", "roomTasks", "quests"}
+    # "logic" is an optional key in the new format (stripped by normalize_snapshot)
+    optional_keys = {"logic"}
 
     for key in required_keys:
         if key not in data:
@@ -876,6 +878,9 @@ def validate_snapshot(file_path: str) -> List[str]:
 
     if not isinstance(data, dict):
         return [fmt("file", f"root must be a dict, got {type(data).__name__}")]
+
+    # Normalize: merge logic into items as extraData (new format support)
+    normalize_snapshot(data)
 
     # 1. Top-level structure
     errors.extend(validate_top_level(data))

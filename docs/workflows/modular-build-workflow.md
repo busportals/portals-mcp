@@ -25,16 +25,18 @@ games/{room-id}/
 
 ## Standard Component Interface
 
-Every component follows the same function signature:
+Every component follows the same function signature with three shared dicts:
 
 ```python
-def build_<name>(items: dict, next_id, **kwargs):
+def build_<name>(items: dict, logic: dict, quests: dict, next_id, **kwargs):
     """
-    Mutates `items` dict in place. Returns a dict of named references
-    to important items/IDs created (for use by downstream components).
+    Mutates items, logic, and quests dicts in place. Returns a dict of
+    named references to important items/IDs created (for downstream components).
 
     Args:
-        items: room items dict — add items with items[next_id()] = {...}
+        items: room items dict — spatial/visual data only
+        logic: room logic dict — interactions and type config, keyed by item ID
+        quests: room quests dict — quest pair entries
         next_id: callable returning the next unique string ID
         **kwargs: dependencies from other components (refs, quest numbers, etc.)
 
@@ -44,11 +46,81 @@ def build_<name>(items: dict, next_id, **kwargs):
     """
 ```
 
-Components that also create quests take a `quests` dict parameter:
+`portals_core.py` creators return `(item, logic_entry)` tuples. Use them like this:
 
 ```python
-def build_<name>(items: dict, quests: dict, next_id, **kwargs):
+from portals_core import create_cube
+from portals_effects import add_task_to_logic, basic_interaction, trigger_on_click, effector_notification
+
+id_ = next_id()
+items[id_], logic[id_] = create_cube(pos=(0, 0.5, 0), color="FF0000")
+
+# Wire an interaction into the logic entry
+task = basic_interaction(trigger_on_click(), effector_notification("Clicked!", "00FF00"))
+add_task_to_logic(logic[id_], task)
 ```
+
+## Component Types
+
+Components fall into three categories based on what they produce:
+
+### Scene-Only Components
+For GLB placement, spatial layout, lighting, decorations -- no interactions or quests.
+```python
+def build_decorations(items: dict, logic: dict, quests: dict, next_id, **kwargs):
+    # Only uses items and logic (logic entries will be empty dicts from create_*)
+    id_ = next_id()
+    items[id_], logic[id_] = create_glb(url=catalog["tree"]["url"], pos=(5, 0, 10))
+    return {"tree_id": id_}
+```
+
+### Logic-Only Components
+For wiring interactions on existing items, creating quests, scoring. Does not place new items.
+```python
+def build_scoring(items: dict, logic: dict, quests: dict, next_id, **kwargs):
+    # Uses logic and quests, references existing item IDs from kwargs
+    coin_ids = kwargs["coin_ids"]
+    q = create_quest_pair(0, "collect_all", creator_uid)
+    quests.update(q["entries"])
+    for cid in coin_ids:
+        task = quest_trigger(q["quest_id"], q["quest_name"], 121, trigger_on_collect())
+        add_task_to_logic(logic[cid], task)
+    return {"collect_quest_id": q["quest_id"]}
+```
+
+### Mixed Components (Default)
+Both placement and interactions. Most components are mixed.
+```python
+def build_door(items: dict, logic: dict, quests: dict, next_id, **kwargs):
+    # Places item AND wires interaction
+    id_ = next_id()
+    items[id_], logic[id_] = create_glb(url=catalog["door"]["url"], pos=(0, 0, 5))
+    q = create_quest_pair(0, "open_door", creator_uid)
+    quests.update(q["entries"])
+    task = quest_effector(q["quest_id"], q["quest_name"], 1, effector_move_to_spot(...))
+    add_task_to_logic(logic[id_], task)
+    return {"door_id": id_, "door_quest_id": q["quest_id"]}
+```
+
+### When to Use Each Type
+
+| Type | Use When | Examples |
+|------|----------|---------|
+| **Scene-only** | Placing GLBs, cubes, lights, decorations with no interactions | Floor grid, walls, vegetation, lighting rigs |
+| **Logic-only** | Wiring interactions on items from other components, quest chains, scoring | Scoring system, progression logic, chain triggers |
+| **Mixed** | Items that need both placement and behavior | Doors, collectibles, NPCs, interactive platforms |
+
+### Parallel Subagent Pattern: Scene + Logic
+
+For complex games, you can split scene layout and interaction wiring into parallel subagent tracks:
+
+1. **Scene subagents** (parallel) -- place all items, return ID refs
+2. **Logic subagents** (after scene) -- wire interactions using the ID refs from step 1
+
+This pattern works well when:
+- The scene is large and benefits from parallel layout subagents
+- Interactions cross-reference items from multiple scene components
+- You want to iterate on logic without regenerating the scene
 
 ## Build Manifest Format
 
@@ -135,8 +207,10 @@ Read these docs before writing:
 Read: games/{room-id}/catalog.json
 
 ## Standard Interface
-- Function: build_{name}(items, next_id, **kwargs) -> dict
+- Function: build_{name}(items, logic, quests, next_id, **kwargs) -> dict
 - Import pattern: sys.path is set by generate.py, use `from portals_core import ...`
+- portals_core creators return (item, logic_entry) tuples: `items[id_], logic[id_] = create_cube(...)`
+- Use `add_task_to_logic(logic[id_], task)` from portals_effects to wire interactions
 - Return named refs dict for downstream components
 
 ## Scene Design
@@ -197,13 +271,13 @@ from .buildings_south import build_buildings_south
 from .lighting import build_lighting
 from .decorations import build_decorations
 
-def build_environment(items, next_id, **kwargs):
+def build_environment(items, logic, quests, next_id, **kwargs):
     refs = {}
-    refs["floor"] = build_floor(items, next_id)
-    refs["north"] = build_buildings_north(items, next_id)
-    refs["south"] = build_buildings_south(items, next_id)
-    refs["lighting"] = build_lighting(items, next_id)
-    refs["decorations"] = build_decorations(items, next_id)
+    refs["floor"] = build_floor(items, logic, quests, next_id)
+    refs["north"] = build_buildings_north(items, logic, quests, next_id)
+    refs["south"] = build_buildings_south(items, logic, quests, next_id)
+    refs["lighting"] = build_lighting(items, logic, quests, next_id)
+    refs["decorations"] = build_decorations(items, logic, quests, next_id)
     return refs
 ```
 

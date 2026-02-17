@@ -257,7 +257,7 @@ def validate_quest_name(quest_name: str) -> bool:
 # ============================================================================
 
 def format_extra_data(data: Dict) -> str:
-    """
+    """DEPRECATED: Logic is now separated from items. Use logic dicts directly.
     Convert dict to JSON string for extraData field.
 
     Args:
@@ -270,7 +270,7 @@ def format_extra_data(data: Dict) -> str:
 
 
 def parse_extra_data(data_str: str) -> Dict:
-    """
+    """DEPRECATED: Logic is now separated from items. Use logic dicts directly.
     Parse extraData JSON string to dict.
 
     Args:
@@ -280,6 +280,55 @@ def parse_extra_data(data_str: str) -> Dict:
         dict: Parsed data
     """
     return json.loads(data_str)
+
+
+# ============================================================================
+# Format Conversion
+# ============================================================================
+
+def merge_logic_into_items(data: Dict) -> Dict:
+    """Merge logic entries into items as extraData strings.
+    Converts new format (logic separated) to legacy format (extraData embedded).
+    Mutates data in-place. Used by tools reading snapshots."""
+    logic = data.pop("logic", {})
+    items = data.get("roomItems", {})
+    # Logic entries for non-existent items are silently dropped.
+    # This is intentional — MCP data may contain orphaned logic entries.
+    for item_id, logic_entry in logic.items():
+        if item_id in items:
+            if isinstance(logic_entry, str):
+                items[item_id]["extraData"] = logic_entry
+            else:
+                items[item_id]["extraData"] = json.dumps(logic_entry, separators=(',', ':'))
+    return data
+
+
+def split_logic_from_items(data: Dict) -> Dict:
+    """Extract extraData from items into a separate logic dict.
+    Converts legacy format (extraData embedded) to new format (logic separated).
+    Mutates data in-place."""
+    items = data.get("roomItems", {})
+    logic = data.get("logic", {})
+    for item_id, item in list(items.items()):
+        if "extraData" in item:
+            ed = item.pop("extraData")
+            if isinstance(ed, str) and ed:
+                logic[item_id] = json.loads(ed)
+            elif isinstance(ed, dict):
+                logic[item_id] = ed
+    data["logic"] = logic
+    return data
+
+
+def normalize_snapshot(data: Dict) -> Dict:
+    """Normalize snapshot for tool consumption.
+    If data has a 'logic' key (new format), merges logic into items as extraData
+    so existing tool code works unchanged. If no 'logic' key (legacy format),
+    items already have extraData -- nothing to do.
+    Mutates data in-place."""
+    if "logic" in data:
+        merge_logic_into_items(data)
+    return data
 
 
 # ============================================================================
@@ -359,29 +408,33 @@ def validate_room_data(data: Dict) -> List[str]:
     Validate room data before pushing to MCP.
 
     Args:
-        data: Room data dict (may contain items, quests, variables, settings)
+        data: Room data dict (may contain roomItems/items, logic, quests, settings)
 
     Returns:
         list: List of error messages (empty if valid)
     """
     errors = []
 
-    # Validate items if present
-    if "items" in data:
-        items = data["items"]
-        if not isinstance(items, dict):
-            errors.append("items must be a dict")
-        else:
-            for item_id, item in items.items():
-                if not isinstance(item_id, str):
-                    errors.append(f"Item ID must be string, got {type(item_id)}")
-                if "prefabName" not in item:
-                    errors.append(f"Item {item_id} missing prefabName")
-                if "extraData" in item:
-                    try:
-                        parse_extra_data(item["extraData"])
-                    except json.JSONDecodeError:
-                        errors.append(f"Item {item_id} has invalid extraData JSON")
+    # Accept both "items" (legacy) and "roomItems" (new format)
+    items_key = "roomItems" if "roomItems" in data else "items"
+    items = data.get("roomItems", data.get("items", {}))
+    if items and not isinstance(items, dict):
+        errors.append(f"{items_key} must be a dict")
+    elif isinstance(items, dict):
+        for item_id, item in items.items():
+            if not isinstance(item_id, str):
+                errors.append(f"Item ID must be string, got {type(item_id)}")
+            if "prefabName" not in item:
+                errors.append(f"Item {item_id} missing prefabName")
+
+    # Validate logic if present
+    logic = data.get("logic", {})
+    if logic and not isinstance(logic, dict):
+        errors.append("logic must be a dict")
+    elif isinstance(logic, dict):
+        for item_id, entry in logic.items():
+            if not isinstance(entry, dict):
+                errors.append(f"Logic entry {item_id} must be a dict, got {type(entry)}")
 
     # Validate quests if present (MCP flat-dict format: {quest_id: quest_entry, ...})
     if "quests" in data:
@@ -484,20 +537,13 @@ _CAMERA_EFFECTS = {
 }
 
 
-def _count_types_in_extra_data(extra_data_str: str) -> Dict[str, int]:
-    """Parse extraData JSON and count $type occurrences by category."""
+def _count_types_in_logic(logic_entry: Dict) -> Dict[str, int]:
+    """Count $type occurrences by category in a logic dict."""
     counts = {"triggers": 0, "audio": 0, "visual": 0, "camera": 0}
-    if not extra_data_str:
+    if not logic_entry:
         return counts
-    try:
-        data = json.loads(extra_data_str)
-    except (json.JSONDecodeError, TypeError):
-        return counts
-
-    # Recursively find all $type values in the data structure
     type_values = []
-    _collect_types(data, type_values)
-
+    _collect_types(logic_entry, type_values)
     for t in type_values:
         if t in _TRIGGER_TYPES:
             counts["triggers"] += 1
@@ -522,6 +568,15 @@ def _collect_types(obj, result: list):
             _collect_types(item, result)
 
 
+def _logic_has_type(logic_entry: Dict, type_name: str) -> bool:
+    """Check if a logic entry contains a specific $type value."""
+    if not logic_entry:
+        return False
+    type_vals = []
+    _collect_types(logic_entry, type_vals)
+    return type_name in type_vals
+
+
 def _item_in_zone(item: Dict, bounds: Tuple[float, float, float, float]) -> bool:
     """Check if item position falls within zone bounds (x_min, x_max, z_min, z_max)."""
     pos = item.get("position", {})
@@ -534,6 +589,7 @@ def _item_in_zone(item: Dict, bounds: Tuple[float, float, float, float]) -> bool
 def generate_build_summary(
     game_name: str,
     items: Dict,
+    logic: Dict,
     quests: Dict,
     zones: Optional[Dict[str, Tuple[float, float, float, float]]] = None,
     spectacle_moments: Optional[List[str]] = None,
@@ -548,6 +604,7 @@ def generate_build_summary(
     Args:
         game_name: Name of the game
         items: dict of room items (keyed by string IDs)
+        logic: dict of logic entries (keyed by item ID, values are dicts)
         quests: dict of quest entries (keyed by quest IDs)
         zones: optional dict mapping zone names to (x_min, x_max, z_min, z_max) bounds.
                If not provided, zone breakdown is omitted.
@@ -604,9 +661,9 @@ def generate_build_summary(
     items_with_camera = 0
     items_with_interactions = 0
 
-    for item in items.values():
-        extra = item.get("extraData", "")
-        counts = _count_types_in_extra_data(extra)
+    for item_id, item in items.items():
+        logic_entry = logic.get(item_id, {})
+        counts = _count_types_in_logic(logic_entry)
         if counts["triggers"] > 0:
             items_with_interactions += 1
         if counts["audio"] > 0:
@@ -617,16 +674,12 @@ def generate_build_summary(
             items_with_camera += 1
 
         # Count individual trigger types
-        if extra:
-            try:
-                data = json.loads(extra)
-                type_vals = []
-                _collect_types(data, type_vals)
-                for t in type_vals:
-                    if t in _TRIGGER_TYPES:
-                        trigger_counts[t] = trigger_counts.get(t, 0) + 1
-            except (json.JSONDecodeError, TypeError):
-                pass
+        if logic_entry:
+            type_vals = []
+            _collect_types(logic_entry, type_vals)
+            for t in type_vals:
+                if t in _TRIGGER_TYPES:
+                    trigger_counts[t] = trigger_counts.get(t, 0) + 1
 
     lines.append("Interactions:")
     if trigger_counts:
@@ -641,15 +694,18 @@ def generate_build_summary(
     ambient_loops = 0
     oneshot_sounds = 0
     music_changes = 0
-    for item in items.values():
-        extra = item.get("extraData", "")
-        if not extra:
+    for item_id in items:
+        logic_entry = logic.get(item_id, {})
+        if not logic_entry:
             continue
-        if "PlaySoundInALoop" in extra:
+        type_vals = []
+        _collect_types(logic_entry, type_vals)
+        type_set = set(type_vals)
+        if "PlaySoundInALoop" in type_set:
             ambient_loops += 1
-        if "PlaySoundOnce" in extra:
+        if "PlaySoundOnce" in type_set:
             oneshot_sounds += 1
-        if "ChangeAudiusEffect" in extra:
+        if "ChangeAudiusEffect" in type_set:
             music_changes += 1
 
     lines.append("Audio:")
@@ -689,7 +745,8 @@ def generate_build_summary(
     if zones:
         lines.append("Detail Layers:")
         for zone_name, bounds in zones.items():
-            zone_items = [item for item in items.values() if _item_in_zone(item, bounds)]
+            zone_item_ids = [iid for iid, item in items.items() if _item_in_zone(item, bounds)]
+            zone_items = [items[iid] for iid in zone_item_ids]
             has_structural = any(
                 _PREFAB_CATEGORIES.get(i.get("prefabName", ""), "") in ("cube", "glb")
                 for i in zone_items
@@ -699,10 +756,11 @@ def generate_build_summary(
                 ("trigger", "collectible", "jumppad", "gun", "destructible", "portal")
                 for i in zone_items
             )
+            # Check for atmospheric: lights/effects or ambient sound loops in logic
             has_atmospheric = any(
-                _PREFAB_CATEGORIES.get(i.get("prefabName", ""), "") in ("light", "effect")
-                or "PlaySoundInALoop" in i.get("extraData", "")
-                for i in zone_items
+                _PREFAB_CATEGORIES.get(items[iid].get("prefabName", ""), "") in ("light", "effect")
+                or _logic_has_type(logic.get(iid, {}), "PlaySoundInALoop")
+                for iid in zone_item_ids
             )
             has_decorative = any(
                 _PREFAB_CATEGORIES.get(i.get("prefabName", ""), "") in
