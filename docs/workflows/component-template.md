@@ -331,18 +331,21 @@ settings = {
 }
 
 # --- Output ---
+from portals_utils import serialize_logic
+
 room_data = {
     "roomItems": items,
-    "logic": {k: v for k, v in logic.items()},
     "settings": settings,
     "roomTasks": {"Tasks": list(quests.keys())},
     "quests": quests,
+    "logic": logic,
 }
+serialize_logic(room_data)
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 output = os.path.join(script_dir, "snapshot.json")
 with open(output, 'w') as f:
-    json.dump(room_data, f, separators=(',', ':'))
+    json.dump(room_data, f, indent=2)
 
 print(f"Generated {len(items)} items, {len(quests)} quests")
 print(f"Saved to {output}")

@@ -53,7 +53,7 @@ Use the modular build workflow (`docs/workflows/modular-build-workflow.md`):
 2. Write `BUILD_MANIFEST.md` — one entry per component with scope, dependencies, docs needed
 3. Write `generate.py` — thin compositor that imports components (~40-80 lines)
 4. **Delegate each component to a subagent** — each gets its relevant design section, docs, and catalog data. Dispatch independent ones in parallel. **Subagents return code as their response; the main conversation writes the files** (subagents cannot reliably write files due to permission constraints). For complex builds, scene subagents handle spatial placement while logic subagents handle interactions and quests, running in parallel.
-5. Run `generate.py` to produce `snapshot.json` — output structure is `{ roomItems, logic, settings, roomTasks, quests }` where `logic` is a separate top-level key containing all item `extraData` (interactions/tasks), keyed by item ID
+5. Run `generate.py` to produce `snapshot.json` — output structure is `{ roomItems, settings, roomTasks, quests, logic }` where `logic` is a separate top-level key containing all item `extraData` as **JSON strings**, keyed by item ID. Call `serialize_logic(room_data)` from `portals_utils` before writing.
 6. **Validate** — `python tools/validate_room.py games/{room-id}/snapshot.json`. Fix any errors before pushing.
 7. Push to room via MCP
 8. Return room URL: `https://theportal.to/?room={room-id}`
@@ -104,7 +104,7 @@ A game is not done until it has ALL of these:
 - **Delegate to subagents.** Never write component code in the main conversation.
 - **Use public assets.** MP3s for audio, GLBs (~15k triangles, 1-2MB), images — all public URLs.
 - **Always use the full asset catalog workflow for GLB placement.** Every step, every time. See below.
-- **MCP and generate.py use the same format.** Both use `{ roomItems, logic, settings, roomTasks, quests }` with `logic` as a separate top-level key. Items in `roomItems` do not contain `extraData` — all interaction data lives in `logic`, keyed by item ID.
+- **MCP and generate.py use the same format.** Both use `{ roomItems, settings, roomTasks, quests, logic }` with `logic` as a separate top-level key. Logic values are **JSON strings** (not raw dicts). Items in `roomItems` do not contain `extraData`. Call `serialize_logic(room_data)` before writing `snapshot.json`.
 
 ## MCP Tools
 
@@ -113,8 +113,8 @@ Authenticate before any other tool. The `authenticate` tool opens a browser wind
 | Tool | Purpose |
 |------|---------|
 | `authenticate` | Opens browser for login. Required first. |
-| `get_room_data` | Download all room data to a temp JSON file. Returns file path — use Read to access. Structure: `{ roomItems, logic, settings, roomTasks, quests }`. The `logic` object contains `extraData` keyed by item ID, stripped from `roomItems`. |
-| `set_room_data` | Replace entire room data from a local JSON file. Structure: `{ roomItems, logic, settings, roomTasks, quests }`. Items in `roomItems` do NOT contain `extraData` — all interaction/task data lives in the separate `logic` object. **Read first.** |
+| `get_room_data` | Download all room data to a temp JSON file. Returns file path — use Read to access. Structure: `{ roomItems, settings, roomTasks, quests, logic }`. The `logic` object contains `extraData` as JSON strings, keyed by item ID, stripped from `roomItems`. |
+| `set_room_data` | Replace entire room data from a local JSON file. Structure: `{ roomItems, settings, roomTasks, quests, logic }`. Items in `roomItems` do NOT contain `extraData` — all interaction/task data lives in the separate `logic` object as JSON strings. **Read first.** |
 | `update_room_settings` | Update room name, description, cover image, loading screen images, visibility. |
 | `create_room` | Create a new room from a template. Templates: `art-gallery`, `blank`, `conference-center`, `conference-stage`, `Cowboy-saloon`, `large-apartment`, `large-art-gallery`, `large-city-district`, `lecture-hall`, `medium-apartment-1`, `medium-city-district`, `small-apartment-1`, `small-city-district`, `spaceship`, `studio-apartment-1`, `studio-apartment-2`, `tropical-paradise`, `volcano-park`. |
 | `duplicate_room` | Duplicate an existing room with all items, settings, tasks, and quests. |

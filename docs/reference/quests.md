@@ -278,7 +278,7 @@ quests.update(q2["entries"])
 
 ## Linking Effects to Quests
 
-Items subscribe to quest state changes via `TaskEffectorSubscription` in their `logic[itemId].Tasks` array. In the new logic-separated format, interactions live in a separate `logic` dict, not embedded as `extraData` inside items.
+Items subscribe to quest state changes via `TaskEffectorSubscription` in their `logic[itemId].Tasks` array. Interactions live in a separate `logic` dict, not embedded as `extraData` inside items.
 
 **Example: Cube that moves when quest activates**
 ```python

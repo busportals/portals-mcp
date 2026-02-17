@@ -265,7 +265,7 @@ def query_items(
     with open(path, "r", encoding="utf-8") as f:
         snapshot = json.load(f)
 
-    normalize_snapshot(snapshot)  # Merge logic into items if new format
+    normalize_snapshot(snapshot)  # Merge logic into items as extraData
 
     room_items: dict = snapshot.get("roomItems", {})
 

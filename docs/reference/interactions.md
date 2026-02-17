@@ -7,7 +7,7 @@ There are two systems for triggering effects on items:
 1. **Basic Interactions** -- direct trigger to effect. Not persistent (no state stored). Fires immediately when triggered.
 2. **Quest-Driven Task Effects** -- tied to quest states (Not Active, Active, Completed). Persistent -- state is stored and survives page reloads.
 
-Both go in `logic[itemId].Tasks` -- a separate top-level `logic` dict keyed by item ID, not embedded inside items. In the old format these lived in `extraData.Tasks` on each item; the new format separates logic from spatial data.
+Both go in `logic[itemId].Tasks` — a separate top-level `logic` dict keyed by item ID, not embedded inside items.
 
 **Adding interactions in Python:**
 ```python

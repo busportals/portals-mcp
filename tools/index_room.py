@@ -835,7 +835,7 @@ def generate_index(snapshot_path: str, output_path: Optional[str] = None) -> str
     with open(snapshot_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    # Normalize format (handle both legacy and new logic-separated format)
+    # Normalize format (merge logic into items as extraData if separated)
     normalize_snapshot(data)
 
     room_items: Dict[str, Dict] = data.get("roomItems", {})

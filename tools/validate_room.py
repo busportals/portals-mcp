@@ -299,7 +299,7 @@ def validate_top_level(data: dict) -> List[str]:
     """Validate top-level snapshot structure."""
     errors = []
     required_keys = {"roomItems", "settings", "roomTasks", "quests"}
-    # "logic" is an optional key in the new format (stripped by normalize_snapshot)
+    # "logic" is optional (stripped by normalize_snapshot)
     optional_keys = {"logic"}
 
     for key in required_keys:
@@ -336,6 +336,11 @@ def validate_settings(settings: dict) -> List[str]:
         errors.append(fmt("settings", f"must be a dict, got {type(settings).__name__}"))
         return errors
 
+    # Empty settings is always an error
+    if not settings:
+        errors.append(fmt("settings", 'settings is empty — use default_settings() from portals_utils to generate proper settings'))
+        return errors
+
     # Check for wrong/custom format (game-design fields instead of Portals schema)
     present_keys = set(settings.keys())
     wrong_keys = present_keys & SETTINGS_WRONG_KEYS
@@ -351,8 +356,11 @@ def validate_settings(settings: dict) -> List[str]:
 
     # roomBase validation
     if "roomBase" not in settings:
-        if expected_keys:  # Only flag if it looks like a Portals settings object
-            errors.append(fmt("settings", 'missing "roomBase" — should be "BlankScene" or similar'))
+        errors.append(fmt("settings", 'missing "roomBase" — should be "BlankScene" or similar'))
+
+    # roomSettingsExtraData validation
+    if "roomSettingsExtraData" not in settings:
+        errors.append(fmt("settings", 'missing "roomSettingsExtraData" — use default_settings() from portals_utils'))
 
     # tasksRefresh validation (must be boolean if present)
     tasks_refresh = settings.get("tasksRefresh")
@@ -879,7 +887,7 @@ def validate_snapshot(file_path: str) -> List[str]:
     if not isinstance(data, dict):
         return [fmt("file", f"root must be a dict, got {type(data).__name__}")]
 
-    # Normalize: merge logic into items as extraData (new format support)
+    # Normalize: merge logic into items as extraData
     normalize_snapshot(data)
 
     # 1. Top-level structure

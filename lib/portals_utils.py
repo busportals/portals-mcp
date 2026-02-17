@@ -257,7 +257,7 @@ def validate_quest_name(quest_name: str) -> bool:
 # ============================================================================
 
 def format_extra_data(data: Dict) -> str:
-    """DEPRECATED: Logic is now separated from items. Use logic dicts directly.
+    """DEPRECATED: Use logic dicts directly.
     Convert dict to JSON string for extraData field.
 
     Args:
@@ -270,7 +270,7 @@ def format_extra_data(data: Dict) -> str:
 
 
 def parse_extra_data(data_str: str) -> Dict:
-    """DEPRECATED: Logic is now separated from items. Use logic dicts directly.
+    """DEPRECATED: Use logic dicts directly.
     Parse extraData JSON string to dict.
 
     Args:
@@ -283,13 +283,153 @@ def parse_extra_data(data_str: str) -> Dict:
 
 
 # ============================================================================
+# Default Settings
+# ============================================================================
+
+def default_settings() -> Dict:
+    """Return a complete default settings dict matching the Portals schema.
+    Includes roomBase, top-level fields, and a full roomSettingsExtraData JSON string.
+    Use this as a starting point — override individual fields as needed."""
+    extra_data = {
+        "welcomeEmbed": "",
+        "openWelcomeIframeInBackground": False,
+        "addWelcomeIframeToInfoButton": False,
+        "showWelcomeOnEntry": False,
+        "skyBoxDayTextureUrl": "",
+        "skyBoxNightTextureUrl": "",
+        "skyBoxDayRotation": 0,
+        "skyBoxNightRotation": 0,
+        "skyBoxDayExposure": 1.0,
+        "skyBoxNightExposure": 1.0,
+        "enableCustomAvatars": False,
+        "defaultToReadyPlayerMe": False,
+        "playerCollisions": True,
+        "preloadRoom": False,
+        "fastDownload": False,
+        "allowedUsers": 0,
+        "disableHToSpawn": False,
+        "playJoinSound": True,
+        "jumpSounds": False,
+        "showNameTags": True,
+        "showBackpack": True,
+        "showQuestLog": False,
+        "showPlayerCount": True,
+        "showMic": True,
+        "showMusic": True,
+        "showEmotes": True,
+        "showSpaceInfo": True,
+        "requestMicPopup": False,
+        "requireUsername": False,
+        "releasedRoom": "",
+        "uncompressedGLB": False,
+        "movementValues": {
+            "movementStateName": "",
+            "walkByDefault": False,
+            "walkSpeed": 2.0,
+            "runSpeed": 4.0,
+            "sprintSpeed": 6.8,
+            "strafing": False,
+            "jumpTimer": 0.3,
+            "jumpHeight": 4.0,
+            "airSpeed": 5.0,
+            "gravity": -10.0,
+            "rotationSpeed": 16.0,
+            "ledgeGrab": False,
+            "forceFirstPerson": False,
+            "stopVerticalInput": False,
+            "stopJumps": False,
+        },
+        "numericParameters": [],
+        "fog": {
+            "DayFogMax": 0.0,
+            "NightFogMax": 0.0,
+            "DayFogColor": "",
+            "NightFogColor": "",
+        },
+        "postprocess": {
+            "BloomDayIntensity": 0.0,
+            "BloomNightIntensity": 0.0,
+            "BloomDayClamp": 0.0,
+            "BloomNightClamp": 0.0,
+            "BloomDayDiffusion": 0.0,
+            "BloomNightDiffusion": 0.0,
+            "CameraMaxDistanceDay": 0.0,
+            "CameraMaxDistanceNight": 0.0,
+        },
+        "lightValues": {"NightShadows": 0},
+        "blockyAvatars": False,
+        "rpmAvatars": False,
+        "collectibleAvatars": False,
+        "customAvatars": False,
+        "roundyAvatars": False,
+        "guardianAvatars": True,
+        "psx": False,
+        "pixelation": 0.24,
+        "movementStates": [],
+        "customSpaceAvatars": [],
+        "customCameraStates": [],
+        "weaponDatas": [],
+        "defaultCameraState": -1,
+        "defaultWeapon": -1,
+        "defaultMovementState": -1,
+        "EventData": json.dumps({"itemNames": [], "itemEvents": []}),
+        "voiceChatRange": 14.0,
+        "globalChat": False,
+        "onboardingType": 1,
+        "RoomItemsData": [],
+        "carSettings": {
+            "acceleration": 0,
+            "drag": 0,
+            "maxSpeed": 0,
+            "steering": 0,
+            "mass": 0,
+            "gravity": 0,
+            "timeToMaxSteer": 0,
+        },
+        "showCombatUI": False,
+    }
+
+    return {
+        "roomBase": "BlankScene",
+        "onlyNftHolders": False,
+        "isNight": False,
+        "wallIndex": 0,
+        "inTownHallMode": False,
+        "globalSpeaking": False,
+        "audiusPlaylist": "",
+        "chatDisabled": False,
+        "allCanBuild": False,
+        "roomPrompt": "",
+        "roomSettingsExtraData": json.dumps(extra_data),
+        "roomNodeExtraData": "",
+        "bannedUsers": "",
+        "shareLiveKitCrossInstances": False,
+        "tokenImage": "",
+        "tokenName": "",
+        "tokenAddress": "",
+        "tasksRefresh": True,
+    }
+
+
+# ============================================================================
 # Format Conversion
 # ============================================================================
 
+def serialize_logic(data: Dict) -> Dict:
+    """Serialize logic dict values to JSON strings for MCP output.
+    The platform expects logic values as JSON strings, not raw dicts.
+    Mutates data in-place."""
+    logic = data.get("logic", {})
+    for item_id, logic_entry in logic.items():
+        if isinstance(logic_entry, dict):
+            logic[item_id] = json.dumps(logic_entry, separators=(',', ':'))
+    return data
+
+
 def merge_logic_into_items(data: Dict) -> Dict:
     """Merge logic entries into items as extraData strings.
-    Converts new format (logic separated) to legacy format (extraData embedded).
-    Mutates data in-place. Used by tools reading snapshots."""
+    Converts separated format to embedded format for tool consumption.
+    Mutates data in-place."""
     logic = data.pop("logic", {})
     items = data.get("roomItems", {})
     # Logic entries for non-existent items are silently dropped.
@@ -305,7 +445,7 @@ def merge_logic_into_items(data: Dict) -> Dict:
 
 def split_logic_from_items(data: Dict) -> Dict:
     """Extract extraData from items into a separate logic dict.
-    Converts legacy format (extraData embedded) to new format (logic separated).
+    Converts embedded format to separated format.
     Mutates data in-place."""
     items = data.get("roomItems", {})
     logic = data.get("logic", {})
@@ -322,9 +462,9 @@ def split_logic_from_items(data: Dict) -> Dict:
 
 def normalize_snapshot(data: Dict) -> Dict:
     """Normalize snapshot for tool consumption.
-    If data has a 'logic' key (new format), merges logic into items as extraData
-    so existing tool code works unchanged. If no 'logic' key (legacy format),
-    items already have extraData -- nothing to do.
+    If data has a 'logic' key, merges logic into items as extraData
+    so existing tool code works unchanged. If no 'logic' key,
+    items already have extraData — nothing to do.
     Mutates data in-place."""
     if "logic" in data:
         merge_logic_into_items(data)
@@ -415,7 +555,7 @@ def validate_room_data(data: Dict) -> List[str]:
     """
     errors = []
 
-    # Accept both "items" (legacy) and "roomItems" (new format)
+    # Accept both "items" and "roomItems" key names
     items_key = "roomItems" if "roomItems" in data else "items"
     items = data.get("roomItems", data.get("items", {}))
     if items and not isinstance(items, dict):

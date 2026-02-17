@@ -594,7 +594,7 @@ def merge_room(
     # Apply merge
     apply_merge(snapshot, patch_data)
 
-    # Convert back to new format: split extraData out into separate logic key
+    # Split extraData out into separate logic key
     split_logic_from_items(snapshot)
 
     # Write updated snapshot

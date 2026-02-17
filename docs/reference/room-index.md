@@ -128,9 +128,9 @@ Automatically re-runs the indexer to update `room_index.md`.
 
 ## Data Format & Normalization
 
-All three tools auto-normalize legacy snapshots via `normalize_snapshot()` from `portals_utils.py`. This means:
+All three tools auto-normalize snapshots via `normalize_snapshot()` from `portals_utils.py`. This handles two cases:
 
-- **New format** (logic separated): `logic` is a top-level key alongside `roomItems`. Items contain only spatial/visual data; interactions and type config live in `logic[itemId]`.
-- **Legacy format** (embedded extraData): Interactions were embedded as `extraData` inside each item. `normalize_snapshot()` merges `logic` back into items as `extraData` so tool internals work unchanged.
+- **Separated format**: `logic` is a top-level key alongside `roomItems`. Items contain only spatial/visual data; interactions and type config live in `logic[itemId]` as **JSON strings**. Call `serialize_logic(room_data)` before writing.
+- **Embedded format** (older snapshots): Interactions are embedded as `extraData` inside each item. `normalize_snapshot()` merges `logic` back into items as `extraData` so tool internals work unchanged.
 
-You do not need to worry about which format a snapshot uses. The tools detect and handle both automatically. When generating new rooms, always use the new separated format (`roomItems` + `logic`).
+You do not need to worry about which format a snapshot uses. The tools detect and handle both automatically. When generating rooms, always use the separated format (`roomItems` + `logic`) with logic values serialized as JSON strings.
