@@ -435,11 +435,19 @@ def default_settings() -> Dict:
 def serialize_logic(data: Dict) -> Dict:
     """Serialize logic dict values to JSON strings for MCP output.
     The platform expects logic values as JSON strings, not raw dicts.
+    Also ensures roomTasks has the required {"Tasks": [...]} structure.
     Mutates data in-place."""
     logic = data.get("logic", {})
     for item_id, logic_entry in logic.items():
         if isinstance(logic_entry, dict):
             logic[item_id] = json.dumps(logic_entry, separators=(',', ':'))
+    # Ensure roomTasks always has the required "Tasks" key
+    rt = data.get("roomTasks", {})
+    if not isinstance(rt, dict):
+        rt = {"Tasks": []}
+    elif "Tasks" not in rt:
+        rt["Tasks"] = []
+    data["roomTasks"] = rt
     return data
 
 

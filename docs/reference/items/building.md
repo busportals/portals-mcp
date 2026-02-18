@@ -92,7 +92,7 @@ wall = create_cube(
 
 **extraData fields:**
 - `text`: String with Unity rich text tags
-- `lookAtCamera`: Billboard mode. `true` (default) = always faces camera
+- `lookAtCamera`: Billboard mode. `true` (default) = always faces camera. When `false`, text faces the **+Z direction** — readable to a player looking toward -Z. If the player faces +Z, the text appears backwards. Rotate 180° around Y to flip.
 
 **Rich text tags:**
 - `<b>bold</b>`
