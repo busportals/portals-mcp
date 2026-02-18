@@ -18,3 +18,8 @@ games/*/
 
 # Plans (session-specific, not permanent docs)
 docs/plans/
+
+# Work-in-progress tools and docs
+tools/inspector.html
+tools/block-builder.html
+docs/reference/field-dictionary.md

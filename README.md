@@ -62,7 +62,7 @@ cd portals-mcp
 ### Step 2: Install the Portals MCP
 
 ```bash
-npx portals-mcp
+npx portals-mcp@latest
 ```
 
 This installs the MCP server that lets Claude communicate with the Portals API. The repo's `.mcp.json` file is already configured to use it — Claude Code will launch it automatically on startup.
