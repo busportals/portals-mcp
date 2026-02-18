@@ -50,13 +50,14 @@ After either path, write to `games/{room-id}/design.md` and get approval.
 Use the modular build workflow (`docs/workflows/modular-build-workflow.md`):
 
 1. Analyze the design — estimate item counts, identify component boundaries
-2. Write `BUILD_MANIFEST.md` — one entry per component with scope, dependencies, docs needed
-3. Write `generate.py` — thin compositor that imports components (~40-80 lines)
-4. **Delegate each component to a subagent** — each gets its relevant design section, docs, and catalog data. Dispatch independent ones in parallel. **Subagents return code as their response; the main conversation writes the files** (subagents cannot reliably write files due to permission constraints). For complex builds, scene subagents handle spatial placement while logic subagents handle interactions and quests, running in parallel.
-5. Run `generate.py` to produce `snapshot.json` — output structure is `{ roomItems, settings, roomTasks, quests, logic }` where `logic` is a separate top-level key containing all item `extraData` as **JSON strings**, keyed by item ID. Call `serialize_logic(room_data)` from `portals_utils` before writing.
-6. **Validate** — `python tools/validate_room.py games/{room-id}/snapshot.json`. Fix any errors before pushing.
-7. Push to room via MCP
-8. Return room URL: `https://theportal.to/?room={room-id}`
+2. **Search for recipes** — run `python tools/search_recipes.py "<keywords>"` to find existing mechanic templates. Check `recipes/patterns.md` for game-type-to-keyword mappings. Use matching recipes as starting patterns for components instead of building from scratch.
+3. Write `BUILD_MANIFEST.md` — one entry per component with scope, dependencies, docs needed. List recipe file paths in "Docs needed" for components that use recipes.
+4. Write `generate.py` — thin compositor that imports components (~40-80 lines)
+5. **Delegate each component to a subagent** — each gets its relevant design section, docs, and catalog data. Dispatch independent ones in parallel. **Subagents return code as their response; the main conversation writes the files** (subagents cannot reliably write files due to permission constraints). For complex builds, scene subagents handle spatial placement while logic subagents handle interactions and quests, running in parallel.
+6. Run `generate.py` to produce `snapshot.json` — output structure is `{ roomItems, settings, roomTasks, quests, logic }` where `logic` is a separate top-level key containing all item `extraData` as **JSON strings**, keyed by item ID. Call `serialize_logic(room_data)` from `portals_utils` before writing.
+7. **Validate** — `python tools/validate_room.py games/{room-id}/snapshot.json`. Fix any errors before pushing.
+8. Push to room via MCP
+9. Return room URL: `https://theportal.to/?room={room-id}`
 
 **Never write component code in the main conversation.** Main context = design, planning, coordination. Subagents = implementation. For 200+ items in one system, use deep delegation (see workflow doc).
 
@@ -163,12 +164,14 @@ Load docs on demand. This section tells you exactly what exists and when to read
 - `docs/workflows/game-designer-workflow.md` — detailed design process, question flows, both "surprise me" and "design every detail" paths
 - `docs/templates/game-design-doc.md` — template for `design.md` with all required sections
 - `docs/workflows/scene-design.md` — asset classification, placement strategies, composition, density targets per zone
+- `recipes/patterns.md` — 7 core compositional patterns showing how Portals primitives compose. Includes game type → search term mapping for finding recipes.
 
 **Build phase** — read these when generating room data:
 - `docs/workflows/builder-workflow.md` — generation script structure, push workflow, iteration
 - `docs/workflows/modular-build-workflow.md` — component architecture, subagent delegation, deep delegation for 200+ items
 - `docs/workflows/component-template.md` — reference template for subagent component files (basic, quest-linked, complex)
 - `docs/workflows/quality-passes.md` — 5-purpose quality system, automated build summaries, review loop
+- `recipes/manifest.md` — searchable recipe catalog. **DO NOT read into context.** Use `python tools/search_recipes.py "<keywords>"` to find relevant recipes, or `--full` to include their content.
 
 **Interactions & logic** — read these when adding triggers, effects, quests, or game logic:
 - `docs/reference/interactions.md` — complete trigger/effect syntax, basic interactions vs. quest-driven tasks
@@ -214,6 +217,8 @@ Load docs on demand. This section tells you exactly what exists and when to read
 | `blender_to_portals.py` | Blender headless exporter — run via `blender --background <file> --python tools/blender_to_portals.py`. |
 | `manifest_to_room_data.py` | Convert Blender export manifest to `snapshot.json` using CDN URL mapping. |
 | `parse_cdn_upload.py` | Parse CDN upload results and save as `cdn_urls.json`. |
+| `build_recipe_manifest.py` | Regenerate `recipes/manifest.md` from recipe frontmatter. Run after adding/editing recipes. |
+| `search_recipes.py` | Search recipes by keyword. Use `--full` to include recipe content. Preferred over manual grep for finding recipes. |
 
 ### Python Libraries (`lib/`)
 
@@ -252,6 +257,8 @@ When delegating to subagents, pass them the specific docs they need. Don't make 
 - The relevant item type doc from `docs/reference/items/` for field schemas
 - `docs/reference/interactions.md` — if the component has triggers/effects
 - `docs/reference/quests.md` — if the component uses quests
+- Relevant recipe files from `recipes/` — run `python tools/search_recipes.py "<keywords>" --full` to find and load matching recipes as starting patterns instead of building from scratch
+- `recipes/patterns.md` — if adapting a recipe or building a custom mechanic not covered by existing recipes
 
 **Quality review subagent** (reviewing a build for polish):
 - The build summary (from `portals_utils.generate_build_summary(game_name, items, logic, quests, ...)` — note the separate `items` and `logic` arguments)
