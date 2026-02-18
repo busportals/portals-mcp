@@ -15,3 +15,6 @@ __pycache__/
 
 # User game projects (created per room, contain local data)
 games/*/
+
+# Plans (session-specific, not permanent docs)
+docs/plans/
