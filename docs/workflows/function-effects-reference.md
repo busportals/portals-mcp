@@ -168,6 +168,36 @@ SetPlayersParameters([Players], 'impostor', false)
 | **Trigger on Tasks Change** | Auto-evaluates when any referenced task/variable changes |
 | **Activate on Start** | Evaluates once on player login |
 
+## Displaying Variables in Text
+
+Use pipe syntax `|variableName|` to show a variable's live value inline in text. The value updates automatically when the variable changes.
+
+**Works in:**
+- **WorldText** `text` field — `"Score: |coins|"`
+- **NotificationPillEvent** `nt` field — `"You earned |reward| points!"`
+
+**Example — score display with WorldText:**
+```python
+# Create a text item showing live score
+score_display = create_text(
+    pos=(0, 3, 0),
+    content="<color=#FFD700>Score: |coins|</color>",
+    billboard=True
+)
+```
+
+**Example — notification with variable:**
+```python
+task = basic_interaction(
+    trigger_on_click(),
+    effector_notification("You have |coins| coins!", "00FF00")
+)
+```
+
+Variables referenced by pipe syntax must be set via `SetVariable()`, `UpdateScoreEvent`, or `UpdateMultiplayerNumericVariable()`.
+
+---
+
 ## Critical Rules
 
 1. **Always decimals** -- `0.0` not `0`, `1.0` not `1`. Integers cause cast errors.

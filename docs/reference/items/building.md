@@ -100,6 +100,20 @@ wall = create_cube(
 - `<u>underline</u>`
 - `<color=#FF0000>red text</color>` (note: `#` prefix required here)
 
+**Dynamic variable display:**
+
+Use pipe syntax `|variableName|` to display a variable's current value inline. The text updates automatically when the variable changes.
+
+```
+Score: |coins|          → "Score: 42"
+|health| / 100 HP      → "75 / 100 HP"
+```
+
+This works with any variable set via `SetVariable()` or `UpdateScoreEvent`. Combine with rich text:
+```
+<color=#FFD700>Score: |coins|</color>
+```
+
 **Python generator:**
 ```python
 from scripts.portals_core import create_text

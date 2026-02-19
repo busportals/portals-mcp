@@ -625,7 +625,7 @@ Quick reference for every confirmed effect `$type` and its parameters. Use these
 |--------|---------|------------|
 | Apply Velocity | `AddVelocityToPlayer` | `{"vel": [x,y,z], "local": bool}` |
 | MoveToSpot | `MoveToSpot` | `{"_transformState": {"position": [x,y,z], "rotation": [qx,qy,qz,qw], "scale": [x,y,z], "duration": float}}` |
-| Notification Pill | `NotificationPillEvent` | `{"nt": "text", "c": "hex", "hideBackground": bool}` |
+| Notification Pill | `NotificationPillEvent` | `{"nt": "text", "c": "hex", "hideBackground": bool}` — `nt` supports pipe syntax `\|varName\|` for inline variable display (e.g., `"You have \|coins\| coins!"`) |
 | Teleport | `TeleportEvent` | `{"id": "room-id", "sn": "spawn name", "sr": float}` |
 | Heal Player | `ChangePlayerHealth` | `{"healthChange": int}` |
 | Damage Player | `ChangePlayerHealth` | `{"op": 2, "healthChange": int}` |
