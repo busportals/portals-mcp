@@ -1,0 +1,176 @@
+name: Post MCP Repository updates to Discord
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: files
+        run: |
+          # Produce name-status list for the commit range
+          if [[ -n "${{ github.event.before }}" && -n "${{ github.event.after }}" ]]; then
+            git diff --name-status ${{ github.event.before }} ${{ github.event.after }} > all_files.txt
+          else
+            echo "No files list available" > all_files.txt
+          fi
+
+          # Filter out files that shouldn't appear in announcements:
+          # - .github/ (workflow infrastructure)
+          # - .gitignore, .mcp.json (meta/config)
+          # - .claude/ (user-specific)
+          # - games/ subdirectories (user project data, except games/.gitkeep and games/README.md)
+          # - docs/plans/ (session-specific)
+          # - __pycache__, .pyc, .pytest_cache (build artifacts)
+          python3 -c "
+          import re
+          excluded = [
+              r'^\.github/',
+              r'^\.gitignore$',
+              r'^\.mcp\.json$',
+              r'^\.claude/',
+              r'^\.DS_Store$',
+              r'^\.env$',
+              r'^__pycache__/',
+              r'\.pyc$',
+              r'^\.pytest_cache/',
+              r'^docs/plans/',
+          ]
+          with open('all_files.txt') as f:
+              for line in f:
+                  parts = line.strip().split('\t')
+                  if len(parts) < 2:
+                      continue
+                  path = parts[-1]
+                  skip = False
+                  for pat in excluded:
+                      if re.search(pat, path):
+                          skip = True
+                          break
+                  # Also skip games/ subdirs but allow games/.gitkeep and games/README.md
+                  if not skip and re.search(r'^games/.+', path):
+                      if path not in ('games/.gitkeep', 'games/README.md'):
+                          skip = True
+                  if not skip:
+                      print(line.strip())
+          " > files.txt
+
+          # Escape newlines for GitHub Actions outputs
+          FILES=$(head -c 5000 files.txt | sed ':a;N;$!ba;s/\n/\\n/g')
+          echo "files=$FILES" >> $GITHUB_OUTPUT
+
+          # Check if there are any relevant files
+          if [[ ! -s files.txt ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get commit diff
+        if: steps.files.outputs.skip != 'true'
+        id: diff
+        run: |
+          if [[ -n "${{ github.event.before }}" && -n "${{ github.event.after }}" ]]; then
+            # Only diff files that passed the filter
+            FILTERED_FILES=$(awk -F'\t' '{for(i=2;i<=NF;i++) print $i}' files.txt 2>/dev/null | tr '\n' ' ')
+            if [[ -n "${FILTERED_FILES// /}" ]]; then
+              git diff ${{ github.event.before }} ${{ github.event.after }} -- $FILTERED_FILES > diff.txt
+            else
+              echo "No relevant files changed" > diff.txt
+            fi
+          else
+            echo "No valid diff available" > diff.txt
+          fi
+          DIFF=$(head -c 10000 diff.txt | sed ':a;N;$!ba;s/\n/\\n/g')
+          echo "diff=$DIFF" >> $GITHUB_OUTPUT
+
+      - name: Generate AI summary
+        if: steps.files.outputs.skip != 'true'
+        id: summary
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DIFF: ${{ steps.diff.outputs.diff }}
+          FILES: ${{ steps.files.outputs.files }}
+        run: |
+          PAYLOAD=$(jq -nc \
+            --arg system "You write concise update announcements for the Portals MCP repository — a toolkit of docs, Python libraries, tools, and recipes that helps AI agents build interactive 3D games in Portals rooms. Convert git changes into a user-facing update summary. Rules:\n- This is a developer toolkit repo (docs, Python libs, CLI tools, recipes), NOT a web app or GitBook site.\n- Group items under bold sections: **Added**, **Updated**, **Renamed**, **Removed** (omit empty sections).\n- For docs (docs/**/*.md): describe what the doc covers and what changed.\n- For Python libraries (lib/*.py): describe the new/changed functions or classes.\n- For tools (tools/*.py): describe what the tool does and what changed.\n- For recipes (recipes/**): describe the game mechanic or pattern.\n- Be concise: 3–8 bullets total, under ~800 characters.\n- Do NOT include any links or URLs.\n- Do NOT wrap your answer in quotation marks, code fences, or blockquotes.\n- Do NOT use '# ' headings; use bold for section names (e.g., **Added**, **Updated**).\n- If details are unclear, say 'Minor updates to repository files.'\n" \
+            --arg user "Changed files (name-status):\n$FILES\n\nUnified diff (may be truncated):\n$DIFF" \
+            '{"model":"gpt-3.5-turbo","messages":[{"role":"system","content":$system},{"role":"user","content":$user}],"max_tokens":300,"temperature":0.2}')
+
+          RESPONSE=$(curl -s \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            https://api.openai.com/v1/chat/completions)
+
+          SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
+
+          # Sanitize summary
+          SANITIZED=$(SUMMARY="$SUMMARY" python3 - <<'PY'
+          import os, re
+          s = os.environ.get("SUMMARY", "")
+          s = s.replace("\r\n", "\n")
+          s = "\n".join([ln for ln in s.splitlines() if ln is not None])
+          s = s.strip()
+          if s.startswith("```") and s.endswith("```"):
+              s = s.strip("`").strip()
+          pairs = {'"':'"', '\u201c':'\u201d', "'":"'", '\u2018':'\u2019', '`':'`'}
+          if s and s[0] in pairs and s.rstrip().endswith(pairs[s[0]]):
+              s = s[1:-1].strip()
+          lines = s.splitlines()
+          while lines and not lines[0].strip():
+              lines.pop(0)
+          if lines:
+              lines[0] = re.sub(r'^\s*["""\x27`]+(Added|Updated|Renamed|Removed)\b', r'\1', lines[0])
+          if lines and re.match(r'^\s{0,3}#{1,6}\s', lines[0]):
+              lines.pop(0)
+          s = "\n".join(lines).strip()
+          s = re.sub(r'[""\x27`]+\s*$', '', s)
+          print(s)
+          PY
+          )
+          SUMMARY="$SANITIZED"
+
+          if [ "$SUMMARY" = "null" ] || [ -z "$SUMMARY" ]; then
+            SUMMARY="AI summary unavailable; here are the changed files:\n\n$FILES"
+          fi
+
+          echo "message=$(jq -Rs . <<< "$SUMMARY")" >> $GITHUB_OUTPUT
+
+      - name: Send to Discord
+        if: steps.files.outputs.skip != 'true'
+        env:
+          RAW_MESSAGE: ${{ steps.summary.outputs.message }}
+        run: |
+          # Decode the JSON string to raw text
+          MESSAGE=$(printf '%s' "$RAW_MESSAGE" | jq -r .)
+
+          # Remove leading/trailing quotes and quotes before section labels
+          MESSAGE=$(printf '%s' "$MESSAGE" | sed -E \
+            -e '1s/^[[:space:]]*["""`]+[[:space:]]*//' \
+            -e '$s/[[:space:]]*["""`]+[[:space:]]*$//' \
+            -e 's/(^|\n)[[:space:]]*[""]+(Added|Updated|Renamed|Removed)(:)/\1\2\3/g')
+
+          # Truncate to Discord embed limits
+          MESSAGE=$(echo "$MESSAGE" | head -c 1800)
+
+          # Append pull recommendation (after truncation to ensure it's always present)
+          MESSAGE="$MESSAGE"$'\n\n'"Pull the latest: \`git pull origin main\`"
+
+          # Build Discord payload
+          PAYLOAD=$(jq -nc \
+            --arg username "Portals" \
+            --arg title "MCP Repository Updates" \
+            --arg desc "$MESSAGE" \
+            '{"username":$username,"embeds":[{"title":$title,"description":$desc,"color":5793266}]}')
+
+          curl -H "Content-Type: application/json" \
+               -d "$PAYLOAD" \
+               "${{ secrets.DISCORD_WEBHOOK }}"
