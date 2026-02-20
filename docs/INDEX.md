@@ -81,6 +81,9 @@ Quick reference for all item types, triggers, effects, and systems available in 
 | **Duplicate Enemy** | DuplicateEnemy | Spawn copies of EnemyNPC at SpawnPoint |
 | **GLB Animation** | PlayAnimationOnce | Play model animation once (supports reverse) |
 | **Walk NPC** | WalkNpcToSpot | Walk NPC to position (speed, endPosition, endRotation) |
+| **Open Iframe** | IframeEvent | Open HTML overlay |
+| **Close Iframe** | IframeStopEvent | Close HTML overlay |
+| **Send to Iframes** | SendMessageToIframes | Push data to open iframes |
 
 All trigger and effect schemas are in [reference/interactions.md](reference/interactions.md).
 
@@ -105,6 +108,7 @@ All trigger and effect schemas are in [reference/interactions.md](reference/inte
 | **Room Index** | Compact room representation — index, query, merge tools. **Never read snapshot.json directly.** | [reference/room-index.md](reference/room-index.md) |
 | **Movement** | Player physics, jump heights, gap widths, jump pad data, level design guidelines | [reference/movement-reference.md](reference/movement-reference.md) |
 | **Functions** | NCalc expressions for complex logic | [workflows/function-effects-reference.md](workflows/function-effects-reference.md) |
+| **Iframes** | Bidirectional HTML/JS overlays — custom UIs, mini-games, HUDs. SDK communication, variable interpolation, URL appearance control. | [reference/iframes.md](reference/iframes.md) |
 
 ## Coordinate System
 

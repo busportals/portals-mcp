@@ -135,55 +135,57 @@ Pickupable weapon that players can use to shoot. Deals damage to other players a
 }
 ```
 
+### Defaults Are Usually Good Enough
+
+**The platform applies sensible defaults per weapon type.** You generally do NOT need to override firing, ammo, or recoil settings — just set `weaponType` and the defaults will produce a weapon that feels right. Only tweak individual settings when the user specifically requests changes (e.g., "make the pistol full auto" → set `automaticWeapon: true`).
+
+The `create_gun()` helper in `portals_core.py` intentionally omits most fields, letting platform defaults take over. This is correct behavior — don't add extra fields "just in case."
+
 ### Weapon Types
 
-| Value | Type |
-|-------|------|
-| `1` | Pistol |
-| `2` | Rifle |
-| `3` | Shotgun (default) |
+| Value | Type | Typical Behavior |
+|-------|------|-----------------|
+| `1` | Pistol | Single bullet, semi-auto, tight spread |
+| `2` | Rifle | Single bullet, can be set to automatic, tight spread |
+| `3` | Shotgun | Multiple pellets per shot, wide spread, reload one-by-one |
 
-### Damage
+### Per-Weapon-Type Defaults
+
+These are the platform defaults when you place a gun and only set `weaponType`. You rarely need to override these.
+
+| Field | Pistol (1) | Rifle (2) | Shotgun (3) |
+|-------|:----------:|:---------:|:-----------:|
+| **Damage** | | | |
+| `maxDamage` | 20 | 30 | 15 |
+| `minDamage` | 10 | 15 | 5 |
+| `minDamageDistance` | 10.0 | 15.0 | 5.0 |
+| `maxDamageDistance` | 40.0 | 80.0 | 20.0 |
+| **Firing** | | | |
+| `firerate` | 0.2 | 0.1 | 0.8 |
+| `projectilesPerShot` | 1 | 1 | 8 |
+| `dispersion` | 0.5 | 0.1 | 4.0 |
+| `automaticWeapon` | false | false | false |
+| `maxRange` | 50.0 | 100.0 | 30.0 |
+| **Ammo** | | | |
+| `clipSize` | 12 | 30 | 8 |
+| `startingReserveAmmo` | 36 | 90 | 24 |
+| `reloadTime` | 1.5 | 2.0 | 1.0 |
+| `autoReload` | true | true | true |
+| **Recoil** | | | |
+| `cameraStability` | 0.7 | 0.6 | 0.4 |
+| `recoilRight` | 0.5 | 0.3 | 1.0 |
+| `recoilLeft` | -0.5 | -0.3 | -1.0 |
+| `recoilUp` | 1.5 | 1.2 | 3.0 |
+
+### Shared Defaults (same across all weapon types)
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `maxDamage` | `25` | Maximum damage dealt at close range. |
-| `minDamage` | `10` | Minimum damage dealt at long range. |
-| `minDamageDistance` | `8` | Distance where max damage starts to fall off. |
-| `maxDamageDistance` | `50` | Distance where damage reaches minimum. |
-
-### Firing
-
-| Key | Default | Description |
-|-----|---------|-------------|
-| `firerate` | `0.8` | Time between shots (seconds). |
-| `projectilesPerShot` | `8` | Number of pellets/bullets per shot. |
-| `dispersion` | `5.0` | Bullet spread angle (degrees). |
-| `automaticWeapon` | `false` | `true` = fires continuously while holding trigger. |
-| `maxRange` | `30` | Maximum bullet travel distance. |
-
-### Ammo
-
-| Key | Default | Description |
-|-----|---------|-------------|
+| `startLoaded` | `true` | Starts with a full magazine. |
 | `isInfinityAmmo` | `false` | `true` = infinite ammo, never needs reloading. |
 | `infiniteReserveAmmo` | `false` | `true` = infinite reserve ammo, still needs to reload clips. |
-| `clipSize` | `8` | Magazine/clip capacity. |
-| `startLoaded` | `true` | `true` = starts with a full magazine. |
-| `startingReserveAmmo` | `0` | Reserve ammo on pickup. |
-| `reloadTime` | `1.0` | Reload duration (seconds). |
-| `autoReload` | `false` | `true` = auto reload when magazine is empty. |
 | `dontUseReload` | `false` | `true` = disable reload mechanic entirely. |
 | `reloadOneByOne` | `false` | `true` = reload one round at a time (like a shotgun). |
-
-### Recoil
-
-| Key | Default | Description |
-|-----|---------|-------------|
-| `cameraStability` | `0.5` | Camera stability. Lower = more shake. |
-| `recoilRight` | `2.5` | Maximum rightward recoil. |
-| `recoilLeft` | `-2.5` | Maximum leftward recoil. |
-| `recoilUp` | `2.0` | Upward recoil per shot. |
 
 ### Audio
 

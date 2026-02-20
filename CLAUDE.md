@@ -176,6 +176,7 @@ Load docs on demand. This section tells you exactly what exists and when to read
 **Interactions & logic** — read these when adding triggers, effects, quests, or game logic:
 - `docs/reference/interactions.md` — complete trigger/effect syntax, basic interactions vs. quest-driven tasks
 - `docs/reference/quests.md` — 3-state quest system, persistence, per-player vs. shared
+- `docs/reference/iframes.md` — bidirectional HTML/JS overlays, Portals SDK, variable interpolation, URL params, debugging
 - `docs/workflows/function-effects-reference.md` — NCalc expressions, variables, conditionals, timers, multiplayer functions
 - `docs/workflows/game-logic-board.md` — visual circuit-board diagrams for game logic
 

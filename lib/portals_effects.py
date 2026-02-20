@@ -716,10 +716,15 @@ def effector_change_fog(color: str, distance: float) -> Dict:
 
 def effector_send_iframe_message(message: str) -> Dict:
     """
-    Send a message to all iframes in the room.
+    Send a message to all open iframes in the room.
 
     Args:
-        message: Message string that iframes will receive.
+        message: Message string that iframes receive via PortalsSdk.setMessageListener().
+            Supports pipe-delimited variable interpolation:
+            - |username| — player's display name (quoted string)
+            - |position| — array of all player positions
+            - |varName| — any variable set via SetPlayersParameters (returns dict keyed by player)
+            Example: "score: |score| player: |username|"
     """
     return {"$type": "SendMessageToIframes", "iframeMsg": message}
 
@@ -736,13 +741,62 @@ def effector_change_voice_group(group: str) -> Dict:
 
 # ── Iframes ───────────────────────────────────────────────────────────────
 
-def effector_open_iframe(url: str) -> Dict:
+def effector_open_iframe(
+    url: str,
+    *,
+    maximized: bool = False,
+    no_close_btn: bool = False,
+    hide_maximize_btn: bool = False,
+    hide_refresh_btn: bool = False,
+    force_close: bool = False,
+    no_blur: bool = False,
+    width: Optional[int] = None,
+    height: Optional[int] = None,
+    left: Optional[int] = None,
+    top: Optional[int] = None,
+) -> Dict:
     """
     Open an iframe overlay for the player.
 
     Args:
         url: Public URL to load in the iframe.
+        maximized: Open fullscreen.
+        no_close_btn: Hide the close button.
+        hide_maximize_btn: Hide the maximize button.
+        hide_refresh_btn: Hide the refresh button.
+        force_close: X button closes instead of minimizing.
+        no_blur: Disable background blur.
+        width: Iframe width in pixels.
+        height: Iframe height in pixels.
+        left: Left offset in pixels.
+        top: Top offset in pixels.
     """
+    params = []
+    if maximized:
+        params.append("maximized=true")
+    if no_close_btn:
+        params.append("noCloseBtn=true")
+    if hide_maximize_btn:
+        params.append("hideMaximizeButton=true")
+    if hide_refresh_btn:
+        params.append("hideRefreshButton=true")
+    if force_close:
+        params.append("forceClose=true")
+    if no_blur:
+        params.append("noBlur=true")
+    if width is not None:
+        params.append(f"width={width}")
+    if height is not None:
+        params.append(f"height={height}")
+    if left is not None:
+        params.append(f"left={left}")
+    if top is not None:
+        params.append(f"top={top}")
+
+    if params:
+        sep = "&" if "?" in url else "?"
+        url = url + sep + "&".join(params)
+
     return {"$type": "IframeEvent", "url": url}
 
 
@@ -751,7 +805,9 @@ def effector_close_iframe(url: str) -> Dict:
     Close a specific iframe overlay.
 
     Args:
-        url: URL of the iframe to close (must match the open iframe's URL).
+        url: URL of the iframe to close. Must match the URL used to open it
+            (including any query parameters that were part of the original URL,
+            but NOT the Portals appearance params like ?maximized=true).
     """
     return {"$type": "IframeStopEvent", "iframeUrl": url}
 

@@ -155,7 +155,7 @@ When a user names a game type, use these search terms to grep `recipes/manifest.
 | Game Type | Search Terms |
 |-----------|-------------|
 | Capture the Flag | team, capture, score, respawn, flag |
-| Escape Room | gate, lock, collect, timer, sequence, puzzle |
+| Escape Room | gate, lock, collect, timer, sequence, puzzle, keypad, code, pin |
 | Platformer | checkpoint, hazard, timer, collect, jump, platform |
 | Scavenger Hunt | collect, npc, gate, quest, hidden, find |
 | PvP Arena | team, respawn, score, hazard, weapon, damage |
@@ -163,5 +163,5 @@ When a user names a game type, use these search terms to grep `recipes/manifest.
 | Race / Obstacle Course | checkpoint, timer, teleport, speed, course |
 | Board Game | pawn, dice, roll, board, move, step, waypoint, turn |
 | RPG / Quest Game | npc, gate, score, quest, dialogue, inventory |
-| Puzzle Room | gate, sequence, lock, collect, trigger, puzzle |
+| Puzzle Room | gate, sequence, lock, collect, trigger, puzzle, keypad, code, pin |
 | Tour / Exhibit | npc, dialogue, teleport, sequence, waypoint |

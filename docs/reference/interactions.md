@@ -671,7 +671,7 @@ Quick reference for every confirmed effect `$type` and its parameters. Use these
 | Camera Zoom | `ChangeCameraZoom` | `{"zoomAmount": float, "lockZoom": bool}` |
 | Toggle Cursor Lock | `ToggleLockCursor` | `{"lockCursor": bool}` |
 | Change Fog | `ChangeFog` | `{"color": "hex", "distance": float}` |
-| Send Msg to Iframes | `SendMessageToIframes` | `{"iframeMsg": "text"}` |
+| Send Msg to Iframes | `SendMessageToIframes` | `{"iframeMsg": "text"}` — supports `\|variable\|` interpolation (`\|username\|`, `\|position\|`, player vars). See [iframes.md](iframes.md). |
 | Clear Leaderboard | `ClearLeaderboard` | `{"label": "name"}` |
 | Open Leaderboard | `OpenLeaderboardEffect` | `{"lb": "leaderboard name"}` |
 | Start Timer | `StartTimerEffect` | `{"tn": "timer name", "ci": "", "showTimerUI": bool}` |
@@ -690,8 +690,8 @@ Quick reference for every confirmed effect `$type` and its parameters. Use these
 | Change Cam State | `ChangeCamState` | `{"camState": "camera name", "transitionSpeed": float}` |
 | Equip Wearable | `ChangeRoundyWearableEffector` | `{"ItemID": "wearable id"}` |
 | Play Animation Once | `PlayAnimationOnce` | `{"speed": float}` (negative = reverse playback) |
-| Open Iframe | `IframeEvent` | `{"url": "iframe url"}` |
-| Close Iframe | `IframeStopEvent` | `{"iframeUrl": "iframe url"}` |
+| Open Iframe | `IframeEvent` | `{"url": "iframe url"}` — URL supports appearance params (`?maximized=true`, `?noCloseBtn=true`, etc.). See [iframes.md](iframes.md). |
+| Close Iframe | `IframeStopEvent` | `{"iframeUrl": "iframe url"}` — URL must match the opened iframe. See [iframes.md](iframes.md). |
 | NPC Message | `NPCMessageEvent` | `{"n": "npc name", "m": "message", "r": bool}` |
 | Walk NPC to Spot | `WalkNpcToSpot` | `{"walkSpeed": float, "endPosition": [x,y,z], "endRotation": [qx,qy,qz,qw]}` |
 | Show Token Swap | `DisplaySellSwap` | `{"id": "swap config id", "typ": int}` |
