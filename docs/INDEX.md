@@ -13,7 +13,7 @@ Quick reference for all item types, triggers, effects, and systems available in 
 | **Media** | Image, Video, Screenshare | DefaultPainting, DefaultVideo, PlaceableTV | [reference/items/media.md](reference/items/media.md) |
 | **Lighting** | Light, Blink Light, Spotlight | Light, BlinkLight, SpotLight | [reference/items/lighting.md](reference/items/lighting.md) |
 | **Display** | Leaderboard, Chart, Billboard | Leaderboard, Chart, GLBSign | [reference/items/display.md](reference/items/display.md) |
-| **Interactive** | NPC | GLBNPC | [reference/items/interactive.md](reference/items/interactive.md) |
+| **Interactive** | NPC, Combat NPC | GLBNPC, EnemyNPC | [reference/items/interactive.md](reference/items/interactive.md) |
 | **Effects** | Addressable VFX (particles, fire, explosions, lightning) | Addressable | [reference/items/effects.md](reference/items/effects.md) |
 
 ## Triggers
@@ -47,6 +47,8 @@ Quick reference for all item types, triggers, effects, and systems available in 
 | **Swap Volume** | SwapVolume | Swap volume trigger |
 | **Item Destroyed** | OnDestroyedEvent | Destructible item destroyed |
 | **Gun Equipped** | OnGunEquippedTrigger | Player equips a gun (Gun/Shotgun only) |
+| **Enemy Died** | OnEnemyDied | Enemy NPC killed (EnemyNPC only) |
+| **Take Damage** | OnTakeDamageTrigger | Enemy NPC took damage (EnemyNPC only) |
 
 ## Effects
 
@@ -72,7 +74,13 @@ Quick reference for all item types, triggers, effects, and systems available in 
 | **Trigger Zone** | ActivateTriggerZoneEffect / DeactivateTriggerZoneEffect | Enable/disable trigger zones |
 | **Gun Control** | EquipGunEffect / TossGunEffect / ResetGunEffect | Equip, drop, or reset guns |
 | **Destructible** | RespawnDestructible | Respawn destroyed items |
+| **Revive Enemy** | ReviveEnemy | Revive dead EnemyNPC |
+| **Reset Enemy** | ResetEnemy | Reset EnemyNPC to original state |
+| **Attack Player** | AttackPlayer | Force EnemyNPC to attack |
+| **Change Enemy HP** | ChangeEnemyHealth | Modify EnemyNPC health |
+| **Duplicate Enemy** | DuplicateEnemy | Spawn copies of EnemyNPC at SpawnPoint |
 | **GLB Animation** | PlayAnimationOnce | Play model animation once (supports reverse) |
+| **Walk NPC** | WalkNpcToSpot | Walk NPC to position (speed, endPosition, endRotation) |
 
 All trigger and effect schemas are in [reference/interactions.md](reference/interactions.md).
 
@@ -190,11 +198,11 @@ Both only work on Trigger cubes (prefabName `"Trigger"`). Note: `UserExitTrigger
 
 ### GLB External Texture References
 
-Some GLB files (especially those exported from Unity via UnityGLTF, such as Kenney asset kits) use external `"uri"` references for textures instead of embedding them in the binary buffer. These files load fine locally but **fail on the Portals CDN** because the relative path (e.g., `Textures/colormap.png`) doesn't exist on the CDN.
+Some GLB files (especially those exported from Unity via UnityGLTF, older Blender plugins, or other tools) use external `"uri"` references for textures instead of embedding them in the binary buffer. These files load fine locally but **fail on the Portals CDN** because the relative path (e.g., `Textures/colormap.png`) doesn't exist on the CDN.
 
 **How to detect:** After uploading, if models appear untextured (white/grey), inspect the GLB's JSON chunk — `images[].uri` means the textures are external and broken. `images[].bufferView` means they're correctly embedded.
 
-**How to fix:** Re-pack the GLB to embed textures — replace each `"uri"` with a `"bufferView"` + `"mimeType"` entry and append the image bytes to the binary buffer. See `docs/reference/glb-asset-catalog.md` for details.
+**How to fix:** Run `python tools/repack_glb_textures.py <input_folder> <output_folder>` to embed textures, then re-upload. See `docs/reference/glb-asset-catalog.md` Troubleshooting section for details.
 
 ## Python Generation Libraries
 

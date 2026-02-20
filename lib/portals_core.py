@@ -822,6 +822,114 @@ def create_addressable(
     return (item, logic)
 
 
+def create_enemy_npc(
+    pos: Tuple[float, float, float],
+    glb_url: str,
+    scale: Tuple[float, float, float] = (1, 1, 1),
+    rot: Tuple[float, float, float, float] = (0, 0, 0, 1),
+    health: int = 40,
+    damage: int = 10,
+    detect_distance: float = 5.0,
+    attack_distance: float = 1.0,
+    lose_target: float = 7.0,
+    fov: int = 330,
+    min_time_attack: float = 0.5,
+    max_time_attack: float = 2.0,
+    attack_speed: float = 1.0,
+    swing_speed: float = 1.0,
+    max_attacks: int = 1,
+    roll_chance: float = 0.0,
+    detect_state: int = 0,
+    speed_multiplier: float = 1.0,
+    health_recovery: int = 0,
+    recovery_delay: int = 0,
+    revive_after_death: bool = False,
+    hide_health_bar: bool = False,
+    weapon_url: str = "",
+    weapon_point: Optional[Dict] = None,
+    parent_item_id: int = 0,
+) -> Tuple[Dict, Dict]:
+    """
+    Create EnemyNPC - AI-controlled combat enemy that chases and attacks players.
+
+    REQUIRES a nav mesh parent. Set parent_item_id to a ResizableCube or 9Cube
+    that has nav_mesh=True. Without this, the NPC cannot pathfind.
+
+    Args:
+        pos: Position (local to parent if parent_item_id set)
+        glb_url: Rigged GLB model URL. Append &FixedSize=X&overrideSize=true for sizing
+        scale: Must match FixedSize in glb_url
+        rot: Quaternion rotation
+        health: Hit points before NPC dies
+        damage: Damage dealt per attack
+        detect_distance: Range to detect and chase players
+        attack_distance: Range to attack players
+        lose_target: Distance at which NPC stops chasing
+        fov: Field of view in degrees for detection
+        min_time_attack: Minimum delay between attacks (seconds)
+        max_time_attack: Maximum delay between attacks (seconds)
+        attack_speed: Attack animation speed multiplier
+        swing_speed: Swing animation speed multiplier
+        max_attacks: Max attacks per combo
+        roll_chance: Dodge-roll chance (0.0 = never)
+        detect_state: 0 = idle (stands still), 1 = wander (roams)
+        speed_multiplier: Movement speed multiplier
+        health_recovery: HP recovered per second during recovery
+        recovery_delay: Seconds without damage before recovery starts
+        revive_after_death: Auto-revive after dying
+        hide_health_bar: Hide health bar above NPC
+        weapon_url: CDN URL of weapon GLB. Empty = unarmed
+        weapon_point: Weapon attachment dict with position/rotation/scale/duration
+        parent_item_id: ID of nav mesh parent item (required for pathfinding)
+
+    Returns:
+        (item_dict, logic_dict) tuple
+    """
+    logic = {
+        "health": health,
+        "damage": damage,
+        "detectDistance": detect_distance,
+        "attackDistance": attack_distance,
+        "loseTarget": lose_target,
+        "fov": fov,
+        "minTimeAttack": min_time_attack,
+        "maxTimeAttack": max_time_attack,
+        "attackSpeed": attack_speed,
+        "swingSpeed": swing_speed,
+        "maxAttacks": max_attacks,
+        "rollChance": roll_chance,
+        "detectState": detect_state,
+        "speedMultiplier": speed_multiplier,
+        "Tasks": [],
+        "ViewNodes": [],
+    }
+
+    if health_recovery > 0:
+        logic["healthRecovery"] = health_recovery
+    if recovery_delay > 0:
+        logic["recoveryDelay"] = recovery_delay
+    if revive_after_death:
+        logic["reviveAfterDeath"] = True
+    if hide_health_bar:
+        logic["hideHealthBar"] = True
+    if weapon_url:
+        logic["weapon"] = weapon_url
+    if weapon_point:
+        logic["point"] = weapon_point
+
+    item = create_base_item(
+        prefab_name="EnemyNPC",
+        pos=pos,
+        rot=rot,
+        scale=scale,
+        content_string=glb_url,
+    )
+    if parent_item_id:
+        item["parentItemID"] = parent_item_id
+
+    return (item, logic)
+
+
 def create_leaderboard(
     pos: Tuple[float, float, float],
     game_name: str,

@@ -186,7 +186,7 @@ Load docs on demand. This section tells you exactly what exists and when to read
 - `docs/reference/items/media.md` — DefaultPainting (image), DefaultVideo, PlaceableTV (screenshare)
 - `docs/reference/items/lighting.md` — Light, BlinkLight, SpotLight
 - `docs/reference/items/display.md` — Leaderboard, Chart, GLBSign (billboard)
-- `docs/reference/items/interactive.md` — GLBNPC (NPC with dialogue/AI)
+- `docs/reference/items/interactive.md` — GLBNPC (NPC with dialogue/AI), EnemyNPC (combat NPC with weapons)
 - `docs/reference/items/effects.md` — Addressable VFX (particles, fire, explosions, lightning)
 
 **Assets** — read these when working with 3D models or images:

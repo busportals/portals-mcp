@@ -70,15 +70,15 @@ Set `contentString` to one of these values:
 **extraData fields:**
 - `gn`: Game name displayed on the leaderboard.
 - `ln`: **Score label — must exactly match the variable or timer name you want to display.** This is the wiring key. If your score variable is named `"coins"`, set `ln: "coins"`. If your timer is named `"run_time"`, set `ln: "run_time"`. A mismatch means the leaderboard displays nothing.
-- `tb`: Display mode toggle. `false` or omit = **points mode** (numeric values from `UpdateScoreEvent`). `true` = **timer mode** (time values from `StopTimerEffect`). **Must match the type of the variable in `ln`** — if `ln` points to a numeric variable, leave `tb` off; if it points to a timer, set `tb: true`.
+- `tb`: Display mode. **Defaults to time-based when omitted.** Set `tb: false` explicitly for points-based leaderboards. `true` or omit = timer mode (displays values as time). `false` = points mode (displays values as numbers). **You must set `tb: false` for numeric scoring — omitting it will display numbers as times.**
 - `ci`: Custom identifier for the data source. Empty string `""` for standard score tracking. Set to `"swapsPerRoom"` to track token swap volume (specific to rooms with token trading).
 
 **Wiring summary:**
 
 | You're tracking | `ln` value | `tb` value |
 |-----------------|-----------|-----------|
-| A numeric variable (points, coins, kills) | Exact variable name (e.g. `"coins"`) | `false` / omit |
-| A timer | Exact timer name (e.g. `"run_time"`) | `true` |
+| A numeric variable (points, coins, kills) | Exact variable name (e.g. `"coins"`) | **`false` (required)** |
+| A timer | Exact timer name (e.g. `"run_time"`) | `true` or omit (default) |
 
 To post a score to the leaderboard, fire `PostScoreToLeaderboard` from a trigger on the same item (or any trigger). The leaderboard reads the current value of the variable/timer named in `ln` at the moment it's posted.
 

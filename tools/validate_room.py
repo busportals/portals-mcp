@@ -34,7 +34,7 @@ VALID_PREFAB_NAMES = {
     # Building
     "ResizableCube", "WorldText", "Portal", "SpawnPoint",
     # Models
-    "GLB", "GlbCollectable", "Destructible", "GLBNPC",
+    "GLB", "GlbCollectable", "Destructible", "GLBNPC", "EnemyNPC",
     # Gameplay
     "Trigger", "JumpPad", "Gun", "Shotgun", "9Cube",
     # Lighting
@@ -59,6 +59,10 @@ VALID_EFFECTS = EFFECT_TYPES | {
     "PlayAnimationOnce", "PlayAnimationInALoop", "StopGLBAnimation",
     # Destructible
     "RespawnDestructible",
+    # EnemyNPC
+    "ReviveEnemy", "ResetEnemy", "AttackPlayer", "ChangeEnemyHealth", "DuplicateEnemy",
+    # NPC movement
+    "WalkNpcToSpot",
 }
 
 # General triggers from TRIGGER_TYPES (portals_effects.py) plus item-specific triggers.
@@ -122,6 +126,9 @@ EFFECT_REQUIRED_PARAMS = {
     "IframeEvent": ["url"],
     "IframeStopEvent": ["iframeUrl"],
     "DisplaySellSwap": ["id"],
+    # EnemyNPC
+    "DuplicateEnemy": ["spawnName"],
+    "ChangeEnemyHealth": ["op", "healthChange"],
 }
 
 # Capitalization-sensitive parameters (common mistakes)
@@ -146,9 +153,16 @@ ITEM_REQUIRED_EXTRA_KEYS = {
     "WorldText": ["text"],
     "GlbCollectable": ["valueLabel", "valueChange"],
     "GLBNPC": ["n"],
+    "EnemyNPC": ["health"],
     "Destructible": ["maxHealth", "respawnTime"],
     "Portal": ["id"],
 }
+
+# EnemyNPC-only triggers (only work on prefabName: "EnemyNPC")
+ENEMY_NPC_ONLY_TRIGGERS = {"OnEnemyDied", "OnTakeDamageTrigger"}
+
+# EnemyNPC-only effects (only work on prefabName: "EnemyNPC")
+ENEMY_NPC_ONLY_EFFECTS = {"ReviveEnemy", "ResetEnemy", "AttackPlayer", "ChangeEnemyHealth", "DuplicateEnemy"}
 
 # Known Addressable VFX content string values (FurnitureAddressables/ prefix)
 KNOWN_ADDRESSABLE_EFFECTS = {
@@ -429,7 +443,7 @@ def validate_item_extra_data(item_key: str, prefab: str, extra: dict, content_st
                 errors.append(fmt(section, f'invalid color value "{extra["col"]}" — must be 6-char hex (e.g., "FF0000")'))
 
     # Content string checks for URL-based items
-    if prefab in ("GLB", "GLBNPC", "DefaultPainting", "DefaultVideo"):
+    if prefab in ("GLB", "GLBNPC", "EnemyNPC", "DefaultPainting", "DefaultVideo"):
         if not content_string:
             errors.append(fmt(section, "contentString is empty — must be a URL"))
 
@@ -545,6 +559,8 @@ def validate_item_tasks(item_key: str, prefab: str, tasks: list) -> List[str]:
                         errors.append(fmt(section, f'Tasks[{i}] {ttype} only works on Trigger items, not {prefab}'))
                     if ttype in VISIBLE_ONLY_TRIGGERS and prefab == "Trigger":
                         errors.append(fmt(section, f'Tasks[{i}] {ttype} on Trigger item — Triggers are invisible during play, use a visible item'))
+                    if ttype in ENEMY_NPC_ONLY_TRIGGERS and prefab != "EnemyNPC":
+                        errors.append(fmt(section, f'Tasks[{i}] {ttype} only works on EnemyNPC items, not {prefab}'))
 
             # Validate DirectEffector if present
             direct = task.get("DirectEffector")
@@ -771,6 +787,8 @@ def validate_cross_references(data: dict) -> List[str]:
             extra = json.loads(raw_extra)
         except (json.JSONDecodeError, TypeError):
             continue
+        if not isinstance(extra, dict):
+            continue
 
         tasks = extra.get("Tasks", [])
         if not isinstance(tasks, list):
@@ -887,6 +905,8 @@ def validate_snapshot(file_path: str) -> List[str]:
             if parse_err:
                 errors.append(parse_err)
                 continue
+            if extra is None:
+                continue
 
             prefab = item.get("prefabName", "")
             content_string = item.get("contentString", "")
@@ -900,7 +920,30 @@ def validate_snapshot(file_path: str) -> List[str]:
             if isinstance(tasks, list) and tasks:
                 errors.extend(validate_item_tasks(item_key, prefab, tasks))
 
-    # 5. Quests
+            # 5. EnemyNPC: check nav mesh parent
+            if prefab == "EnemyNPC":
+                parent_id = item.get("parentItemID", 0)
+                if parent_id == 0:
+                    errors.append(fmt(f"item {item_key}, EnemyNPC", "no parentItemID set — EnemyNPC requires a nav mesh parent (ResizableCube or 9Cube with nav=true)"))
+                else:
+                    parent_key = str(parent_id)
+                    parent = items.get(parent_key)
+                    if parent and isinstance(parent, dict):
+                        parent_prefab = parent.get("prefabName", "")
+                        if parent_prefab not in ("ResizableCube", "9Cube", "GLB"):
+                            errors.append(fmt(f"item {item_key}, EnemyNPC", f"parent {parent_key} is {parent_prefab} — EnemyNPC parent should be ResizableCube or 9Cube with nav=true"))
+                        elif parent_prefab in ("ResizableCube", "9Cube"):
+                            # Check parent has nav=true
+                            parent_extra_raw = parent.get("extraData", "")
+                            if isinstance(parent_extra_raw, str) and parent_extra_raw:
+                                try:
+                                    parent_extra = json.loads(parent_extra_raw)
+                                    if not parent_extra.get("nav"):
+                                        errors.append(fmt(f"item {item_key}, EnemyNPC", f'parent {parent_key} ({parent_prefab}) missing nav=true — EnemyNPC requires AI-walkable surface'))
+                                except (json.JSONDecodeError, TypeError):
+                                    pass
+
+    # 6. Quests
     quests = data.get("quests", {})
     if isinstance(quests, dict) and quests:
         errors.extend(validate_quests(quests))

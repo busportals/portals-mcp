@@ -79,6 +79,8 @@ wall = create_cube(
 
 3D text labels with rich formatting support.
 
+**Size:** At scale 1, text is approximately 0.086 meters tall. Scales proportionally (scale 2 ≈ 0.172m tall). Use this to calculate the scale needed for a target text height.
+
 **Base structure:**
 ```json
 {

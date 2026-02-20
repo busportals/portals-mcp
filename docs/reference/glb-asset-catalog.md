@@ -902,25 +902,32 @@ Use these to visually identify items and determine their category, name, and fro
 
 ## Troubleshooting
 
-### Models Appear Untextured After Upload
+### GLBs Not Loading or Appearing Invisible
+
+If a user reports that GLB models aren't showing up at all, check these common causes in order:
+
+1. **Bad URL** — Verify the `contentString` is a valid, publicly accessible CDN URL. Open it in a browser to confirm it downloads.
+2. **File too large** — Run `python tools/check_room_storage.py --catalog games/{room-id}/catalog.json`. Individual GLBs over ~15 MB or rooms over 500 MB total may fail to load.
+3. **Corrupt GLB** — Try opening the file in a local glTF viewer (e.g., https://gltf-viewer.donmccurdy.com/). If it doesn't render there either, the file itself is broken.
+4. **External texture references** — See the next section. This is the most common cause of models loading but appearing white/grey.
+5. **Scale issue** — A model at scale 0.001 will be invisible. Check the `scale` field in the room data.
+
+### Models Appear Untextured (White/Grey) After Upload
 
 **Symptom:** GLB models load fine locally but appear white/grey on the Portals CDN.
 
-**Cause:** The GLB uses external `"uri"` references for textures instead of embedding them in the binary buffer. This is common with GLBs exported from Unity via UnityGLTF (e.g., Kenney asset kits). The relative path (e.g., `Textures/colormap.png`) doesn't exist on the CDN.
+**Cause:** The GLB uses external `"uri"` references for textures instead of embedding them in the binary buffer. This is common with GLBs exported from Unity (via UnityGLTF), older Blender plugins, or other tools that write texture paths like `Textures/colormap.png`. The relative path doesn't exist on the CDN.
 
 **How to detect:** Inspect the GLB file's JSON chunk. Look at the `images` array:
 - `"uri": "Textures/colormap.png"` — **broken** (external reference)
 - `"bufferView": 3, "mimeType": "image/png"` — **correct** (embedded)
 
-**How to fix:** Re-pack the GLB to embed all textures:
+**How to fix:** Use the repack tool:
 
-1. Parse the GLB (12-byte header + JSON chunk + binary chunk)
-2. For each `images[]` entry that has a `"uri"`:
-   - Read the referenced image file
-   - Append the image bytes to the binary buffer
-   - Replace `"uri"` with `"bufferView"` (pointing to a new buffer view) and `"mimeType"`
-   - Add a corresponding `bufferViews[]` entry for the appended data
-3. Update the `buffers[0].byteLength` to reflect the new total size
-4. Re-write the GLB with the updated JSON and binary chunks
+```bash
+python tools/repack_glb_textures.py <input_folder> <output_folder>
+```
 
-After re-packing, upload the fixed GLBs and verify they render with textures on the CDN.
+This reads each GLB, finds images with external `"uri"` entries, embeds the referenced texture files into the binary buffer, and writes fixed GLBs to the output folder. Files without external textures are copied as-is.
+
+The tool looks for referenced textures relative to the GLB file's directory, and also checks a `Textures/` subfolder. After repacking, upload the output folder and verify models render with textures on the CDN.

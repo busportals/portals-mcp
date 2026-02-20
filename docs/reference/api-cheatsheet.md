@@ -76,7 +76,7 @@ effector_notification(text, color="FFFFFF", hide_background=False)
 # Values (Variables)
 effector_display_value(label, color="FFFFFF")
 effector_hide_value(label)
-effector_update_value(label="", op=1, change=1.0)      — op: 1=add, 2=sub, 3=set, 4=mul
+effector_update_value(label="", op=1, change=1.0)      — OMIT op to set value. 1=add, 2=sub, 3=mul, 4=div
 effector_update_string_value(label, text)
 
 # Function
@@ -92,7 +92,7 @@ effector_stop_timer(timer_name, countdown_id="")
 effector_cancel_timer(timer_name)
 
 # Leaderboard
-effector_post_score()
+effector_post_score(label="")                          — only for numeric values, not timers
 effector_clear_leaderboard(label)
 effector_open_leaderboard(leaderboard_name)
 

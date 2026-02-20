@@ -73,7 +73,9 @@ EFFECT_TYPES = {
     # Iframes
     "IframeEvent", "IframeStopEvent",
     # NPC
-    "NPCMessageEvent",
+    "NPCMessageEvent", "WalkNpcToSpot",
+    # EnemyNPC
+    "ReviveEnemy", "ResetEnemy", "AttackPlayer", "ChangeEnemyHealth", "DuplicateEnemy",
     # Token Swap
     "DisplaySellSwap", "HideSellSwap",
     # Dialogue
@@ -94,6 +96,8 @@ TRIGGER_TYPES = {
     "OnItemClickEvent", "PlayerLeave", "SwapVolume",
     # Trigger-cube-only
     "OnEnterEvent", "OnExitEvent",
+    # EnemyNPC-only
+    "OnEnemyDied", "OnTakeDamageTrigger",
 }
 
 
@@ -160,16 +164,25 @@ def effector_move_to_spot(
     position: Optional[List[float]] = None,
     rotation: Optional[List[float]] = None,
     scale: Optional[List[float]] = None,
-    duration: float = 0.0
+    duration: float = 0.0,
+    relative: bool = False
 ) -> Dict:
     """
     Animate item to a new position/rotation/scale.
 
+    By default, all values are ABSOLUTE (world-space). To keep an item's
+    original size during movement, set scale to match the item's placed scale.
+
+    With relative=True, all values become OFFSETS that accumulate with each
+    trigger. E.g. position=[1,0,0] moves 1 unit in +X each time. Scale is
+    additive: scale=[1,1,1] grows 1→2→3→4 with repeated triggers.
+
     Args:
-        position: [x, y, z] target position. None = don't change.
-        rotation: [qx, qy, qz, qw] target quaternion. None = don't change.
-        scale: [sx, sy, sz] target scale. None = don't change.
+        position: [x, y, z] position. Absolute or offset depending on relative.
+        rotation: [qx, qy, qz, qw] quaternion. Absolute or delta.
+        scale: [sx, sy, sz] scale. Absolute or additive offset.
         duration: Animation time in seconds. 0 = instant.
+        relative: If True, values are offsets from current transform.
     """
     state = {"duration": duration}
     if position is not None:
@@ -178,7 +191,10 @@ def effector_move_to_spot(
         state["rotation"] = rotation
     if scale is not None:
         state["scale"] = scale
-    return {"$type": "MoveToSpot", "_transformState": state}
+    result = {"$type": "MoveToSpot", "_transformState": state}
+    if relative:
+        result["relative"] = True
+    return result
 
 
 def effector_move_item_to_player() -> Dict:
@@ -440,16 +456,18 @@ def effector_hide_value(label: str) -> Dict:
     return {"$type": "HideValueEvent", "label": label}
 
 
-def effector_update_value(label: str = "", op: int = 1, change: float = 1.0) -> Dict:
+def effector_update_value(label: str = "", op: int = None, change: float = 1.0) -> Dict:
     """
     Modify a numeric variable.
 
     Args:
         label: Variable name. "" = uses the item's default variable.
-        op: Operation. 1 = add, 2 = subtract, 3 = set, 4 = multiply.
-        change: Amount to change by.
+        op: Operation. OMIT op entirely (pass None) to SET the value. 1 = add, 2 = subtract, 3 = multiply, 4 = divide.
+        change: Amount to set/change by.
     """
-    e = {"$type": "UpdateScoreEvent", "op": op, "scoreChange": change}
+    e = {"$type": "UpdateScoreEvent", "scoreChange": change}
+    if op is not None:
+        e["op"] = op
     if label:
         e["label"] = label
     return e
@@ -570,9 +588,21 @@ def effector_cancel_timer(timer_name: str) -> Dict:
 
 # ── Leaderboard ────────────────────────────────────────────────────────────
 
-def effector_post_score() -> Dict:
-    """Post the player's current score to the leaderboard."""
-    return {"$type": "PostScoreToLeaderboard"}
+def effector_post_score(label: str = "") -> Dict:
+    """
+    Post the player's current score to the leaderboard.
+
+    Only needed for numeric values (points, coins, etc.). Time-based
+    leaderboards record automatically when StopTimerEffect fires.
+
+    Args:
+        label: Variable name to post (e.g. "Points"). Must match the
+               leaderboard's `ln` field.
+    """
+    e = {"$type": "PostScoreToLeaderboard"}
+    if label:
+        e["label"] = label
+    return e
 
 
 def effector_clear_leaderboard(label: str) -> Dict:
@@ -727,6 +757,28 @@ def effector_close_iframe(url: str) -> Dict:
 
 
 # ── NPC ────────────────────────────────────────────────────────────────────
+
+def effector_walk_npc_to_spot(
+    position: List[float],
+    walk_speed: float = 3.0,
+    rotation: Optional[List[float]] = None
+) -> Dict:
+    """
+    Walk an NPC to a target position with walk animation.
+
+    Args:
+        position: [x, y, z] target position.
+        walk_speed: Movement speed in units/sec. Default 3.0.
+        rotation: [qx, qy, qz, qw] end rotation. Default [0,0,0,1] (facing +Z).
+    """
+    rot = rotation if rotation is not None else [0.0, 0.0, 0.0, 1.0]
+    return {
+        "$type": "WalkNpcToSpot",
+        "walkSpeed": walk_speed,
+        "endPosition": position,
+        "endRotation": rot
+    }
+
 
 def effector_npc_message(npc_name: str, message: str, repeatable: bool = True) -> Dict:
     """
@@ -900,8 +952,51 @@ def effector_refresh_inventory() -> Dict:
     return {"$type": "RefreshUserInventory"}
 
 
+# ── EnemyNPC ──────────────────────────────────────────────────────────────
+
+def effector_revive_enemy() -> Dict:
+    """Revive a dead EnemyNPC. Attach to EnemyNPC items."""
+    return {"$type": "ReviveEnemy"}
+
+
+def effector_reset_enemy() -> Dict:
+    """Reset an EnemyNPC to full health at its original position. Attach to EnemyNPC items."""
+    return {"$type": "ResetEnemy"}
+
+
+def effector_attack_player() -> Dict:
+    """Force an EnemyNPC to immediately attack the nearest player. Attach to EnemyNPC items."""
+    return {"$type": "AttackPlayer"}
+
+
+def effector_change_enemy_health(op: int = 1, health_change: int = 1) -> Dict:
+    """Modify an EnemyNPC's health. Attach to EnemyNPC items.
+
+    Args:
+        op: Operation — 1=add, 2=subtract.
+        health_change: Amount of health to add or subtract.
+    """
+    return {"$type": "ChangeEnemyHealth", "op": op, "healthChange": health_change}
+
+
+def effector_duplicate_enemy(spawn_name: str, count: int = 1, random_radius: float = 2.0) -> Dict:
+    """Spawn copies of an EnemyNPC at a named SpawnPoint. Attach to EnemyNPC items.
+
+    Args:
+        spawn_name: Name of the SpawnPoint where clones appear (must match SpawnPoint's n field).
+        count: Number of copies to spawn.
+        random_radius: Random offset radius around spawn point (meters).
+    """
+    return {
+        "$type": "DuplicateEnemy",
+        "spawnName": spawn_name,
+        "count": count,
+        "randomRadius": random_radius,
+    }
+
+
 # ============================================================================
-# TRIGGER BUILDERS (23 confirmed: 21 general + 2 trigger-cube-only)
+# TRIGGER BUILDERS (25 confirmed: 21 general + 2 trigger-cube-only + 2 EnemyNPC-only)
 # Each returns the inner trigger payload: {"$type": "..."}
 # ============================================================================
 
@@ -1022,6 +1117,23 @@ def trigger_on_enter() -> Dict:
 def trigger_on_exit() -> Dict:
     """Player exits the trigger zone. ONLY works on Trigger items."""
     return {"$type": "OnExitEvent"}
+
+
+# ── EnemyNPC-Only Triggers (only work on prefabName: "EnemyNPC") ──────────
+
+def trigger_enemy_died(rtime: float = 0.0, delay: float = 0.0) -> Dict:
+    """Enemy NPC was killed. ONLY works on EnemyNPC items.
+
+    Args:
+        rtime: Respawn timer — seconds before the NPC can respawn after death.
+        delay: Delay before the trigger fires after death.
+    """
+    return {"$type": "OnEnemyDied", "RTime": rtime, "Delay": delay}
+
+
+def trigger_take_damage() -> Dict:
+    """Enemy NPC took damage. ONLY works on EnemyNPC items."""
+    return {"$type": "OnTakeDamageTrigger"}
 
 
 # ============================================================================

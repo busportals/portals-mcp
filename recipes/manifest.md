@@ -4,3 +4,6 @@
 
 | Recipe | Category | Tags | Patterns | Summary | Path |
 |--------|----------|------|----------|---------|------|
+| Board Game Pawn Movement | mechanics | pawn, board game, move, walk, npc, glb, step, waypoint, horse race, token, piece, board | quest-gated-effect, state-machine, variable-tracking, chain-reaction | Move pawns along a board using quest-sequenced steps — NPC approach (WalkNpcToSpot) or GLB approach (MoveToSpot, recommended for performance) | mechanics/board-game-pawn-movement.md |
+| Dice Roll | mechanics | dice, random, roll, chance, rng, select, board game, turn | variable-tracking, direct-trigger-effect | Random number generation using SelectRandom in function effects, with variable storage and display | mechanics/dice-roll.md |
+| Leaderboard & Scoring | scoring | leaderboard, score, points, timer, value, update, display, ranking | direct-trigger-effect, variable-tracking | Points-based and time-based scoring with leaderboard display, including reset and timer invalidation patterns | scoring/leaderboard-and-scoring.md |

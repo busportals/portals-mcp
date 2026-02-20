@@ -161,6 +161,7 @@ When a user names a game type, use these search terms to grep `recipes/manifest.
 | PvP Arena | team, respawn, score, hazard, weapon, damage |
 | Wave Survival | round, wave, respawn, hazard, spawn, enemy |
 | Race / Obstacle Course | checkpoint, timer, teleport, speed, course |
+| Board Game | pawn, dice, roll, board, move, step, waypoint, turn |
 | RPG / Quest Game | npc, gate, score, quest, dialogue, inventory |
 | Puzzle Room | gate, sequence, lock, collect, trigger, puzzle |
 | Tour / Exhibit | npc, dialogue, teleport, sequence, waypoint |

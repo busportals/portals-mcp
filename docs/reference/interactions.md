@@ -29,7 +29,7 @@ A basic interaction fires an effect immediately when a trigger occurs (e.g., pla
 
 The wrapper is `TaskTriggerSubscription`. It contains a `Trigger` field specifying the event, and a `DirectEffector` wrapping the effect.
 
-**Full example -- click to MoveToSpot:**
+**Full example -- click to MoveToSpot (absolute):**
 ```json
 {
   "$type": "TaskTriggerSubscription",
@@ -42,6 +42,33 @@ The wrapper is `TaskTriggerSubscription`. It contains a `Trigger` field specifyi
         "rotation": [0, 0, 0, 1],
         "scale": [1, 1, 1]
       }
+    },
+    "Id": "unique-uuid",
+    "TargetState": 2,
+    "Name": ""
+  },
+  "Id": "unique-uuid",
+  "TargetState": 2,
+  "Name": ""
+}
+```
+
+**Full example -- click to MoveToSpot (relative):**
+
+When `"relative": true` is set on the MoveToSpot effector, all `_transformState` values become **offsets from the item's current transform** instead of absolute world values. For example, `position: [1, 0, 0]` moves the item 1 unit in the +X direction from wherever it currently is.
+
+```json
+{
+  "$type": "TaskTriggerSubscription",
+  "Trigger": {"$type": "OnClickEvent"},
+  "DirectEffector": {
+    "Effector": {
+      "$type": "MoveToSpot",
+      "_transformState": {
+        "position": [1, 0, 0],
+        "rotation": [0, 0, 0, 1]
+      },
+      "relative": true
     },
     "Id": "unique-uuid",
     "TargetState": 2,
@@ -324,6 +351,8 @@ Each item can have effects that trigger on quest state changes. All 3 states use
 - `duration` controls animation time in seconds. `0.0` = instant.
 - `_transformState` can independently set position, rotation, scale, and duration per state
 - `position` and `scale` use arrays `[x, y, z]`, `rotation` uses `[qx, qy, qz, qw]`
+- **By default, all `_transformState` values are ABSOLUTE, not relative to the item's placed transform.** `position` is an absolute world coordinate, `scale` is an absolute scale value, and `rotation` is an absolute quaternion. For example, if an item is placed at scale `[0.5, 0.5, 0.5]` and a MoveToSpot uses `scale: [1, 1, 1]`, the item will visually grow to double its placed size. To keep the item's original size during movement, set `scale` to match the item's placed scale.
+- **Relative mode**: Add `"relative": true` to the MoveToSpot effector (sibling to `_transformState`) to make all values **offsets from the item's current transform**. Values accumulate with each trigger — `position: [1, 0, 0]` moves 1 unit in +X each time (so 3 clicks = 3 units total). **Scale is additive**: `scale: [1, 1, 1]` adds 1 to each axis each time, so an item at scale 1 grows to 2, then 3, then 4, etc. `rotation` is applied as a delta. Useful for repeatable/stackable movements. **Note:** `"relative"` only exists on `MoveToSpot`, not on `PortalsAnimation`.
 - Multiple quests can drive independent animation sequences on the same item
 
 ---
@@ -608,7 +637,7 @@ Quick reference for every confirmed effect `$type` and its parameters. Use these
 | Display Avatar Screen | `DisplayAvatarScreen` |
 | Move Item to Player | `MoveItemToPlayer` |
 | Reset All Tasks | `ResetAllTasks` |
-| Post Score to Leaderboard | `PostScoreToLeaderboard` |
+| Post Score to Leaderboard | `PostScoreToLeaderboard` | `{"label": "variable name"}` — only for numeric values, not timers |
 | Refresh Inventory | `RefreshUserInventory` |
 | Change Time of Day | `ChangeTimeOfDay` |
 | Hide Token Swap | `HideSellSwap` |
@@ -618,20 +647,23 @@ Quick reference for every confirmed effect `$type` and its parameters. Use these
 | Respawn Destructible | `RespawnDestructible` |
 | Activate Trigger Zone | `ActivateTriggerZoneEffect` |
 | Deactivate Trigger Zone | `DeactivateTriggerZoneEffect` |
+| Revive Enemy | `ReviveEnemy` |
+| Reset Enemy | `ResetEnemy` |
+| Attack Player | `AttackPlayer` |
 
 ### Parameterized Effects
 
 | Effect | `$type` | Parameters |
 |--------|---------|------------|
 | Apply Velocity | `AddVelocityToPlayer` | `{"vel": [x,y,z], "local": bool}` |
-| MoveToSpot | `MoveToSpot` | `{"_transformState": {"position": [x,y,z], "rotation": [qx,qy,qz,qw], "scale": [x,y,z], "duration": float}}` |
+| MoveToSpot | `MoveToSpot` | `{"_transformState": {"position": [x,y,z], "rotation": [qx,qy,qz,qw], "scale": [x,y,z], "duration": float}, "relative": bool}` — by default all values are **ABSOLUTE** (world position, world scale, world rotation). Add `"relative": true` to make values **offsets from current transform**. Not on PortalsAnimation. |
 | Notification Pill | `NotificationPillEvent` | `{"nt": "text", "c": "hex", "hideBackground": bool}` — `nt` supports pipe syntax `\|varName\|` for inline variable display (e.g., `"You have \|coins\| coins!"`) |
 | Teleport | `TeleportEvent` | `{"id": "room-id", "sn": "spawn name", "sr": float}` |
 | Heal Player | `ChangePlayerHealth` | `{"healthChange": int}` |
 | Damage Player | `ChangePlayerHealth` | `{"op": 2, "healthChange": int}` |
 | Display Value | `DisplayValueEvent` | `{"label": "name", "color": "hex"}` |
 | Hide Value | `HideValueEvent` | `{"label": "name"}` |
-| Update Value | `UpdateScoreEvent` | `{"op": int, "scoreChange": float}` (op: 1=add, 2=sub, 3=set, 4=mul) |
+| Update Value | `UpdateScoreEvent` | `{"scoreChange": float}` or `{"op": int, "scoreChange": float}` — **omit `op` entirely to set value**. When `op` is present: 1=add, 2=sub, 3=mul, 4=div |
 | Update String Value | `UpdateScoreEventString` | `{"targetText": "text", "label": "name"}` |
 | Function Effect | `FunctionEffector` | `{"V": "NCalc expression"}` — **task names omit the numbered prefix**: quest `Name` uses `0_redteam` but NCalc uses just `'redteam'` (no `0_` prefix) in `SetTask()`, `$T{}`, `OnChange` |
 | Player Emote | `PlayerEmote` | `{"animationName": "emote"}` |
@@ -661,7 +693,10 @@ Quick reference for every confirmed effect `$type` and its parameters. Use these
 | Open Iframe | `IframeEvent` | `{"url": "iframe url"}` |
 | Close Iframe | `IframeStopEvent` | `{"iframeUrl": "iframe url"}` |
 | NPC Message | `NPCMessageEvent` | `{"n": "npc name", "m": "message", "r": bool}` |
+| Walk NPC to Spot | `WalkNpcToSpot` | `{"walkSpeed": float, "endPosition": [x,y,z], "endRotation": [qx,qy,qz,qw]}` |
 | Show Token Swap | `DisplaySellSwap` | `{"id": "swap config id", "typ": int}` |
+| Change Enemy Health | `ChangeEnemyHealth` | `{"op": int, "healthChange": int}` — `op`: 1=add, 2=sub. EnemyNPC-only. |
+| Duplicate Enemy | `DuplicateEnemy` | `{"spawnName": "spawn name", "count": int, "randomRadius": float}` — spawns copies at named SpawnPoint. EnemyNPC-only. |
 
 ### Complex Effects
 
@@ -684,6 +719,14 @@ Quick reference for every confirmed effect `$type` and its parameters. Use these
 - `RespawnDestructible`: No parameters. Respawns a destroyed Destructible item. Attach to Destructible items.
 - `ActivateTriggerZoneEffect` / `DeactivateTriggerZoneEffect`: No parameters. Enable/disable a Trigger zone so it stops/starts firing enter/exit events. Attach to Trigger items.
 - `PlayAnimationOnce`: `{"speed": float}` — plays a GLB animation once at the given speed. Negative speed plays in reverse.
+- `WalkNpcToSpot`: NPC-only. Walks the NPC to `endPosition` at `walkSpeed` (units/sec). The NPC plays a walk animation while moving. Attach to the GLBNPC item. Typically quest-driven — use one quest per waypoint to sequence movement (e.g., `STEP1` → walk to position A, `STEP2` → walk to position B). `endPosition` and `endRotation` are arrays, not objects.
+- `ReviveEnemy`: No parameters. Revives a dead EnemyNPC. Attach to EnemyNPC items. Typically quest-driven — use `ReviveEnemy` on a quest completion to respawn enemies after a timer or event.
+- `ResetEnemy`: No parameters. Respawns the enemy with fresh health at its original position. Attach to EnemyNPC items.
+- `AttackPlayer`: No parameters. Forces the NPC to immediately attack the nearest player. Attach to EnemyNPC items.
+- `ChangeEnemyHealth`: `{"op": int, "healthChange": int}` — modifies the NPC's health. `op`: 1=add, 2=sub. Attach to EnemyNPC items.
+- `DuplicateEnemy`: `{"spawnName": "spawn name", "count": int, "randomRadius": float}` — spawns copies of the NPC at a named SpawnPoint. Set a SpawnPoint's `n` field and reference it in `spawnName`. Useful for creating enemy swarms.
+- `OnEnemyDied`: EnemyNPC-only trigger. `{"$type": "OnEnemyDied", "RTime": float, "Delay": float}`. `RTime` is the respawn timer (seconds), `Delay` is fire delay. Use to trigger loot drops, score updates, or respawn sequences when an enemy is killed.
+- `OnTakeDamageTrigger`: EnemyNPC-only trigger. No parameters. Fires when the NPC takes damage. Use for reactive behaviors like aggro-on-hit or spawning reinforcements.
 
 ---
 
@@ -719,6 +762,25 @@ All general triggers use bare `{"$type": "TriggerName"}` with no extra params.
 | Player Leave | `PlayerLeave` |
 | Swap Volume | `SwapVolume` |
 | Item Destroyed | `OnDestroyedEvent` |
+
+### EnemyNPC Triggers (prefabName: "EnemyNPC")
+
+| Trigger | `$type` | Notes |
+|---------|---------|-------|
+| Enemy Died | `OnEnemyDied` | NPC was killed. Has optional `RTime` (respawn timer, seconds) and `Delay` (fire delay, seconds) fields. |
+| Take Damage | `OnTakeDamageTrigger` | NPC took damage from any source. No parameters. |
+
+**Example — OnEnemyDied trigger advancing a quest:**
+```json
+{
+  "$type": "TaskTriggerSubscription",
+  "Trigger": {"$type": "OnEnemyDied", "RTime": 0.0, "Delay": 0.0},
+  "Id": "unique-uuid",
+  "TargetState": 181,
+  "Name": "quest-name",
+  "TaskTriggerId": "quest-id"
+}
+```
 
 ### Gun Triggers (prefabName: "Gun" or "Shotgun")
 
