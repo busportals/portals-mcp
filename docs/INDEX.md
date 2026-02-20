@@ -235,6 +235,7 @@ Quick reference for all item types, triggers, effects, and systems available in 
 | Effect | $type | Use Case |
 |--------|-------|----------|
 | **Play Animation** | PlayAnimationOnce | Play GLB animation once (negative speed = reverse) |
+| **Stop Animation** | StopAnimationEvt | Stop/freeze GLB animation at a specific point (0.0–1.0) |
 
 ### Other
 

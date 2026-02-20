@@ -86,7 +86,7 @@ add_task_to_logic(logic[hb_cube_id], quest_effector(
     effector_run_triggers([{
         "quest_id": hb_id, "quest_name": hb_name,
         "target_state": 121,  # Active -> Completed
-        "delay": 0.1
+        "delay": 0.01
     }])
 ))
 
@@ -107,9 +107,9 @@ add_task_to_logic(logic[hb_cube_id], quest_effector(
 2. Quest Active (state 1) fires three effects simultaneously:
    - `SendMessageToIframes` with `|username|pos:|position|` — broadcasts position data
    - `SendMessageToIframes` with `|username|rot:|rotation|` — broadcasts Y-rotation (degrees)
-   - `RunTriggersFromEffector` with 0.1s delay → transitions quest Active → Completed
+   - `RunTriggersFromEffector` with 0.01s delay → transitions quest Active → Completed
 3. Quest Completed (state 2) fires `RunTriggersFromEffector` → transitions Any → Active
-4. Back to step 2 — loop repeats forever at ~10Hz
+4. Back to step 2 — loop repeats forever at ~100Hz
 
 ### Adding more data
 
@@ -239,7 +239,7 @@ add_task_to_logic(logic[some_item_id], basic_interaction(
 1. **Do NOT write your own minimap HTML.** The viewer is already hosted at `https://busportals.github.io/portals-games/minimap/`. Configure it via URL params only. Never create local HTML files for the minimap.
 2. Use `OnPlayerLoggedIn` (not `OnEnterEvent`) to start the heartbeat — it fires reliably when a player enters the room, works on any item type, and doesn't require a giant invisible trigger zone.
 2. The quest MUST use `non_persistent=True` (sets `Group: "nonPersistent"`) and `repeatable_limit=0`. Non-persistent means the quest resets when the player leaves — this is required so the heartbeat loop restarts on each visit. Using `multiplayer=False` alone sets `Group: ""` which is **persistent** and will break the loop on re-entry.
-3. The 0.1s delay on Active → Completed prevents infinite recursion. Do not set to 0.
+3. The 0.01s delay on Active → Completed prevents infinite recursion. Do not set to 0.
 4. `|position|` is a built-in variable that resolves to ALL players' positions, not just the triggering player.
 5. `|rotation|` is a built-in variable that resolves to ALL players' Y-rotations in degrees (0-360). Format: `{"Player1"="343.0", "Player2"="120.5"}`.
 6. The heartbeat fires per-player — each player's client runs its own loop. The iframe receives messages from the local player's loop.

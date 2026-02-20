@@ -56,7 +56,7 @@ VALID_EFFECTS = EFFECT_TYPES | {
     # Trigger Zone
     "ActivateTriggerZoneEffect", "DeactivateTriggerZoneEffect",
     # GLB Animation
-    "PlayAnimationOnce", "PlayAnimationInALoop", "StopGLBAnimation",
+    "PlayAnimationOnce", "PlayAnimationInALoop",
     # Destructible
     "RespawnDestructible",
     # EnemyNPC

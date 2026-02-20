@@ -245,10 +245,17 @@ The `customCameraStates` array defines named camera presets switchable via the `
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `fog.DayFogMax` | float | `0.0` | Day fog density (0 = off) |
-| `fog.NightFogMax` | float | `0.0` | Night fog density |
+| `fog.DayFogMax` | float | `0.0` | Day fog distance (0 = off) |
+| `fog.NightFogMax` | float | `0.0` | Night fog distance |
 | `fog.DayFogColor` | string | `""` | Day fog color (hex) |
 | `fog.NightFogColor` | string | `""` | Night fog color (hex) |
+
+**Fog distance guidelines:**
+- Never set fog distance below 6 unless it is 0 (off) or specifically requested by the user
+- Thick fog: ~12
+- Medium fog: ~30
+- Light fog: ~100
+- Extra light fog: 100+
 
 #### Post-Processing
 

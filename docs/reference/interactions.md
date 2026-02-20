@@ -524,6 +524,78 @@ These boolean fields go inside the `Effector` object alongside `_transformStates
 
 ---
 
+## StopAnimationEvt (Stop GLB Animation)
+
+Stops an animated GLB model's embedded animation at a specific normalized time point. The `stop` field ranges from `0.0` (beginning of the animation, 0%) to `1.0` (end, 100%). When fired, the GLB freezes at that frame.
+
+**Common pattern:** Use `OnPlayerLoggedIn` → `StopAnimationEvt` with `stop: 0.0` to freeze animated GLBs at their first frame on room load. Then use `PlayAnimationOnce` on click or quest state change to play the animation when desired (e.g., opening a door, activating a lever).
+
+**Basic interaction -- freeze animation on room entry:**
+```json
+{
+  "$type": "TaskTriggerSubscription",
+  "Trigger": {"$type": "OnPlayerLoggedIn"},
+  "DirectEffector": {
+    "Effector": {
+      "$type": "StopAnimationEvt",
+      "stop": 0.0
+    },
+    "Id": "unique-uuid",
+    "TargetState": 2,
+    "Name": ""
+  },
+  "Id": "unique-uuid",
+  "TargetState": 2,
+  "Name": ""
+}
+```
+
+**Quest-driven -- stop animation when quest completes:**
+```json
+{
+  "$type": "TaskEffectorSubscription",
+  "Effector": {
+    "$type": "StopAnimationEvt",
+    "stop": 0.0
+  },
+  "Id": "unique-uuid",
+  "Name": "0_questname",
+  "TaskTriggerId": "quest-id"
+}
+```
+
+**Fields:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `stop` | Float | — | Normalized time: `0.0` = start (0%), `1.0` = end (100%). Omitting the field stops the animation at whatever frame it's currently on. |
+
+**Python builder:**
+```python
+from portals_effects import effector_stop_animation, effector_play_animation_once
+
+# Freeze at start of animation
+effector_stop_animation(stop=0.0)
+
+# Freeze at 50% through the animation
+effector_stop_animation(stop=0.5)
+
+# Freeze at end of animation
+effector_stop_animation(stop=1.0)
+
+# Pair with PlayAnimationOnce for a play-on-demand pattern:
+# 1. On room entry, freeze the GLB at frame 0
+# 2. On click (or quest), play the animation once
+```
+
+**Typical use cases:**
+- **Doors**: Freeze closed on load (`stop: 0.0`), play animation to open on trigger
+- **Levers/switches**: Hold at starting position, animate on interaction
+- **Cutscene poses**: Freeze animated characters at specific poses
+- **State machines**: Stop at `0.0` (closed) or `1.0` (open) to represent binary states
+
+---
+
 ## DialogEffectorDisplay
 
 Creates an interactive dialogue tree with branching answers. The most complex effect type -- embeds inline quest entries for each dialogue node.
@@ -695,6 +767,7 @@ Quick reference for every confirmed effect `$type` and its parameters. Use these
 | Change Cam State | `ChangeCamState` | `{"camState": "camera name", "transitionSpeed": float}` |
 | Equip Wearable | `ChangeRoundyWearableEffector` | `{"ItemID": "wearable id"}` |
 | Play Animation Once | `PlayAnimationOnce` | `{"speed": float}` (negative = reverse playback) |
+| Stop Animation | `StopAnimationEvt` | `{"stop": float}` — normalized time 0.0 (start) to 1.0 (end). Freezes GLB animation at that frame. |
 | Open Iframe | `IframeEvent` | `{"url": "iframe url"}` — URL supports appearance params (`?maximized=true`, `?noCloseBtn=true`, etc.). See [iframes.md](iframes.md). |
 | Close Iframe | `IframeStopEvent` | `{"iframeUrl": "iframe url"}` — URL must match the opened iframe. See [iframes.md](iframes.md). |
 | NPC Message | `NPCMessageEvent` | `{"n": "npc name", "m": "message", "r": bool}` |
@@ -728,6 +801,7 @@ Quick reference for every confirmed effect `$type` and its parameters. Use these
 - `RespawnDestructible`: No parameters. Respawns a destroyed Destructible item. Attach to Destructible items.
 - `ActivateTriggerZoneEffect` / `DeactivateTriggerZoneEffect`: No parameters. Enable/disable a Trigger zone so it stops/starts firing enter/exit events. Attach to Trigger items.
 - `PlayAnimationOnce`: `{"speed": float}` — plays a GLB animation once at the given speed. Negative speed plays in reverse.
+- `StopAnimationEvt`: `{"stop": float}` — stops/freezes a GLB animation at normalized time (0.0–1.0). Common pattern: `OnPlayerLoggedIn` → `StopAnimationEvt(stop: 0.0)` to freeze on load, then `PlayAnimationOnce` on click to play. Omitting `stop` freezes at the current frame.
 - `WalkNpcToSpot`: GLBNPC-only. Walks the NPC to `endPosition` at `walkSpeed` (units/sec). The NPC plays a walk animation while moving. Attach to the GLBNPC item. Typically quest-driven — use one quest per waypoint to sequence movement (e.g., `STEP1` → walk to position A, `STEP2` → walk to position B). `endPosition` and `endRotation` are arrays, not objects.
 - `NpcAnimation`: GLBNPC-only. Uses the same restricted animation list as `PlayerEmote` and the NPC `a` extraData field: `Sitting`, `Can Can`, `Wave`, `Salute`, `Jive`, `Salsa`, `Shuffling`, `Chicken`, `Slide n Jive`, `Robot`.
 - `NpcCopyPlayerPath`: GLBNPC-only. Makes the NPC walk along a recorded path. All three arrays (`positions`, `rotations`, `animatorParameterDatas`) must have the same length. Set `shouldLoop: true` for continuous patrol.

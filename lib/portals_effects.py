@@ -93,7 +93,7 @@ EFFECT_TYPES = {
     # Destructible
     "RespawnDestructible",
     # GLB Animation
-    "PlayAnimationOnce",
+    "PlayAnimationOnce", "StopAnimationEvt",
 }
 
 TRIGGER_TYPES = {
@@ -646,15 +646,19 @@ def effector_open_leaderboard(leaderboard_name: str) -> Dict:
 
 # ── Audio ──────────────────────────────────────────────────────────────────
 
-def effector_play_sound_once(url: str, distance: float = 10.0) -> Dict:
+def effector_play_sound_once(url: str, distance: float = 10.0, preload: bool = False) -> Dict:
     """
     Play a sound effect once.
 
     Args:
         url: Public URL to an MP3 file.
-        distance: Audible distance in meters.
+        distance: Audible distance in meters. -1 = global (heard everywhere).
+        preload: If True, the sound is preloaded for instant playback.
     """
-    return {"$type": "PlaySoundOnce", "Url": url, "Dist": distance}
+    out = {"$type": "PlaySoundOnce", "Url": url, "Dist": distance}
+    if preload:
+        out["Preload"] = True
+    return out
 
 
 def effector_play_sound_loop(url: str, distance: float = -1.0, preload: bool = True) -> Dict:
@@ -1143,6 +1147,20 @@ def effector_play_animation_once(speed: float = 1.0) -> Dict:
         speed: Playback speed. 1.0 = normal. Negative = reverse playback.
     """
     return {"$type": "PlayAnimationOnce", "speed": speed}
+
+
+def effector_stop_animation(stop: float = 0.0) -> Dict:
+    """Stop a GLB model's animation at a specific point.
+
+    Freezes the animation at the given normalized time. Useful for holding
+    animated GLBs at a specific pose (e.g., a door held closed at frame 0,
+    or held open at frame 1).
+
+    Args:
+        stop: Normalized stop point from 0.0 to 1.0.
+              0.0 = beginning of animation (0%), 1.0 = end (100%).
+    """
+    return {"$type": "StopAnimationEvt", "stop": stop}
 
 
 # ── EnemyNPC ──────────────────────────────────────────────────────────────
