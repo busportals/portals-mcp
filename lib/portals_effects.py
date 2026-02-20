@@ -769,10 +769,14 @@ def effector_open_iframe(
     hide_refresh_btn: bool = False,
     force_close: bool = False,
     no_blur: bool = False,
+    no_pointer_events: bool = False,
     width: Optional[int] = None,
     height: Optional[int] = None,
     left: Optional[int] = None,
     top: Optional[int] = None,
+    right: Optional[int] = None,
+    bottom: Optional[int] = None,
+    z_index: Optional[int] = None,
 ) -> Dict:
     """
     Open an iframe overlay for the player.
@@ -785,16 +789,20 @@ def effector_open_iframe(
         hide_refresh_btn: Hide the refresh button.
         force_close: X button closes instead of minimizing.
         no_blur: Disable background blur.
+        no_pointer_events: Make iframe click-through (passes input to game).
         width: Iframe width in pixels.
         height: Iframe height in pixels.
         left: Left offset in pixels.
         top: Top offset in pixels.
+        right: Right offset in pixels.
+        bottom: Bottom offset in pixels.
+        z_index: Stacking order (higher = on top).
     """
     params = []
     if maximized:
         params.append("maximized=true")
     if no_close_btn:
-        params.append("noCloseBtn=true")
+        params.append("hideCloseButton=true")
     if hide_maximize_btn:
         params.append("hideMaximizeButton=true")
     if hide_refresh_btn:
@@ -803,6 +811,8 @@ def effector_open_iframe(
         params.append("forceClose=true")
     if no_blur:
         params.append("noBlur=true")
+    if no_pointer_events:
+        params.append("noPointerEvents=true")
     if width is not None:
         params.append(f"width={width}")
     if height is not None:
@@ -811,6 +821,12 @@ def effector_open_iframe(
         params.append(f"left={left}")
     if top is not None:
         params.append(f"top={top}")
+    if right is not None:
+        params.append(f"right={right}")
+    if bottom is not None:
+        params.append(f"bottom={bottom}")
+    if z_index is not None:
+        params.append(f"zIndex={z_index}")
 
     if params:
         sep = "&" if "?" in url else "?"
@@ -819,15 +835,19 @@ def effector_open_iframe(
     return {"$type": "IframeEvent", "url": url}
 
 
-def effector_close_iframe(url: str) -> Dict:
+def effector_close_iframe(url: str = "", *, close_all: bool = False) -> Dict:
     """
-    Close a specific iframe overlay.
+    Close iframe overlay(s).
 
     Args:
         url: URL of the iframe to close. Must match the URL used to open it
             (including any query parameters that were part of the original URL,
             but NOT the Portals appearance params like ?maximized=true).
+            Ignored when close_all=True.
+        close_all: Close every open iframe at once.
     """
+    if close_all:
+        return {"$type": "IframeStopEvent", "closeAll": True, "iframeUrl": ""}
     return {"$type": "IframeStopEvent", "iframeUrl": url}
 
 

@@ -783,6 +783,8 @@ All general triggers use bare `{"$type": "TriggerName"}` with no extra params.
 | Swap Volume | `SwapVolume` |
 | Item Destroyed | `OnDestroyedEvent` |
 
+**`OnPlayerLoggedIn` is the "room enter" trigger.** It fires once per player when they join the room. Use it for any logic that should run when a player enters: initializing variables (`SetNumberVariable`), starting ambient sounds (`PlaySoundInALoop`), hiding/showing objects for initial state (`HideObjectEvent`/`ShowObjectEvent`), equipping items (`EquipGunEffect`), resetting animations (`StopAnimationEvt`), or opening welcome UI (`OpenIframe`). This is the primary "game start" trigger — if you need something to happen when a player arrives, put it on `OnPlayerLoggedIn`.
+
 ### EnemyNPC Triggers (prefabName: "EnemyNPC")
 
 | Trigger | `$type` | Notes |

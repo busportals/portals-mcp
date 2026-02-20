@@ -204,7 +204,7 @@ Each player progresses independently. State is saved between sessions.
   "Description": "created in unity"
 }
 ```
-Per-player state that resets when the player leaves or the room reloads. Ideal for game logic (active game, round state, player roles).
+Per-player state that resets when the player leaves or the room reloads. Ideal for game logic (active game, round state, player roles). **Any self-looping quest (heartbeats, timers, repeating broadcasts) MUST use `"nonPersistent"`** — a persistent quest that completed in a previous session won't restart correctly on re-entry.
 
 **Example - Multiplayer (shared, persistent):**
 ```json

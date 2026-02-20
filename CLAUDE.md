@@ -12,6 +12,7 @@ Common temptations that are NEVER acceptable:
 - "This is a simple scene, I don't need the catalog workflow" — **No. Use the catalog.** Simple scenes still need correct spacing and rotation.
 - "I'll skip the design doc for a small change" — **No. At minimum, state what you're changing and why before you change it.**
 - "I'll hardcode positions instead of calculating from measurements" — **No. Use real measurements from catalog.json.**
+- "I don't need to check recipes for this" — **No. Always search recipes first.** Even a simple mechanic like a door lock or score counter probably has a recipe. Run `python tools/search_recipes.py` before inventing anything.
 
 **If a step feels slow or tedious, that is not a reason to skip it. It is the reason the step exists — it catches the mistakes that fast work misses.** A room that takes 10 minutes longer to build but looks right is infinitely better than one delivered fast with items floating in air, chairs facing walls, or furniture clipping through floors.
 
@@ -27,7 +28,7 @@ Figure out which situation you're in:
 
 ### Step 2: Design the Game
 
-**Before building anything, design it.** Ask:
+**Before building anything, design it.** First, search for relevant recipes: `python tools/search_recipes.py "<keywords>"` using terms from the user's request. Matching recipes inform what's already solved and what patterns to use in the design. Then ask:
 
 > "Do you want to design every detail with me, or should I surprise you with the best version I can think of?"
 
@@ -76,6 +77,38 @@ Never ship a first build without at least one quality pass. The review loop uses
 
 User playtests and gives feedback. Interpret through a game design lens — "too hard" might mean the platform is too small, the gap too wide, or the jump pad underpowered. Read `room_index.md` to understand current state. Query specific items with `tools/query_room.py` if needed. Propose the fix, update the script or create a patch, regenerate/merge, **validate**, push. Log changes in `games/{room-id}/changelog.md`.
 
+### When a User Says "I Made Changes"
+
+Users may make manual edits in the Portals editor — moving items, changing effects, adding/removing objects. **These changes must never be silently overwritten.** Use the sync workflow:
+
+1. **Pull server data** — call MCP `get_room_data` → temp file path
+2. **Sync** — `python tools/sync_room.py games/{room-id}/ --server-data /tmp/xxx.json`
+3. **Review the diff report** — the tool prints exactly what changed (moved items, new items, deleted items, changed effects). Confirm with the user if anything looks unexpected.
+4. The tool automatically:
+   - Updates `snapshot.json` with the current server state
+   - Generates `overrides.json` that preserves manual edits across future regeneration
+   - Re-indexes `room_index.md`
+5. **Future generate.py runs will automatically respect overrides** — see below.
+
+Use `--dry-run` to preview changes without modifying files. Use `--clear-overrides` to reset the overrides file if it's no longer needed.
+
+**Generator integration:** Every `generate.py` must call `apply_overrides()` at the end, before `serialize_logic()`:
+
+```python
+from portals_utils import apply_overrides, load_overrides, serialize_logic
+
+# ... generate items normally via components ...
+
+# Preserve manual editor changes (from overrides.json)
+overrides = load_overrides(f"games/{room_id}/overrides.json")
+apply_overrides(room_data, overrides)
+
+serialize_logic(room_data)
+# ... write snapshot.json ...
+```
+
+This ensures that if a user moved item 42 from (1,0,3) to (5,0,8) in the editor, re-running `generate.py` will produce item 42 at (5,0,8), not the original position.
+
 ## Complete Game Checklist
 
 A game is not done until it has ALL of these:
@@ -107,6 +140,8 @@ A game is not done until it has ALL of these:
 - **Use public assets.** MP3s for audio, GLBs (~15k triangles, 1-2MB), images — all public URLs.
 - **Always use the full asset catalog workflow for GLB placement.** Every step, every time. See below.
 - **MCP and generate.py use the same format.** Both use `{ roomItems, settings, roomTasks, quests, logic }` with `logic` as a separate top-level key. Logic values are **JSON strings** (not raw dicts). Items in `roomItems` do not contain `extraData`. Call `serialize_logic(room_data)` before writing `snapshot.json`.
+- **Always search recipes first.** Before designing or building any mechanic, interaction, or game system, run `python tools/search_recipes.py "<keywords>"` to check for existing recipes. If a recipe exists, use it as the starting point — don't reinvent from scratch. If no recipe matches, check `recipes/patterns.md` for compositional patterns. This applies to every request, not just full game builds.
+- **Sync before overwriting.** If a user says they made manual changes, ALWAYS run `sync_room.py` before pushing any new data. Never blindly push a generated snapshot over manual edits. The overrides system ensures generators respect user edits automatically.
 
 ## MCP Tools
 
@@ -221,6 +256,7 @@ Load docs on demand. This section tells you exactly what exists and when to read
 | `parse_cdn_upload.py` | Parse CDN upload results and save as `cdn_urls.json`. |
 | `build_recipe_manifest.py` | Regenerate `recipes/manifest.md` from recipe frontmatter. Run after adding/editing recipes. |
 | `search_recipes.py` | Search recipes by keyword. Use `--full` to include recipe content. Preferred over manual grep for finding recipes. |
+| `sync_room.py` | Sync manual editor changes. Diffs server vs local, generates `overrides.json`, updates `snapshot.json`. Run when user says "I made changes". |
 
 ### Python Libraries (`lib/`)
 
@@ -228,7 +264,7 @@ Load docs on demand. This section tells you exactly what exists and when to read
 |---------|-----------------|
 | `portals_core.py` | Item generators — cubes, text, spawns, triggers, GLBs, collectibles, lights, NPCs, etc. Creators return `(item, logic)` tuples. |
 | `portals_effects.py` | 63 effect builders + 21 trigger builders. Uses `add_task_to_logic(logic, task)` to attach tasks to logic objects. |
-| `portals_utils.py` | Quest helpers, rotation math, validation, data formatting, build summaries. |
+| `portals_utils.py` | Quest helpers, rotation math, validation, data formatting, build summaries, `load_overrides()` + `apply_overrides()` for manual edit preservation. |
 | `modular_helpers.py` | `ModularKit` class, `rotated_edges()`, `find_piece()` for modular kit placement. |
 | `board_helpers.py` | Logic board visualization — circuit-board flowchart nodes, connectors, pulses. |
 
@@ -244,6 +280,7 @@ games/{room-id}/
   thumbnails/          — 4-view PNG renders of each GLB
   snapshot.json        — last-known room state (NEVER read into context)
   room_index.md        — compact index of snapshot (read THIS instead)
+  overrides.json       — manual editor changes preserved across regeneration (from sync_room.py)
   changelog.md         — what changed and when
 ```
 
@@ -271,6 +308,7 @@ When delegating to subagents, pass them the specific docs they need. Don't make 
 - `docs/workflows/function-effects-reference.md` — NCalc syntax
 - `docs/reference/interactions.md` — trigger/effect patterns
 - `docs/reference/quests.md` — quest state management
+- Relevant recipe files from `recipes/` — search first with `python tools/search_recipes.py "<keywords>" --full`
 
 **Scene subagent** (spatial placement — items only, no logic):
 - `catalog.json` — real dimensions for all GLBs
@@ -282,3 +320,4 @@ When delegating to subagents, pass them the specific docs they need. Don't make 
 - `docs/reference/interactions.md` — trigger/effect patterns, task structure
 - `docs/reference/quests.md` — 3-state quest system, persistence
 - `docs/workflows/function-effects-reference.md` — NCalc expressions, variables, conditionals, timers
+- Relevant recipe files from `recipes/` — search first with `python tools/search_recipes.py "<keywords>" --full`

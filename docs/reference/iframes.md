@@ -13,7 +13,8 @@ Three effects control iframes from the Portals interaction system:
 | Effect | `$type` | Parameters | Purpose |
 |--------|---------|------------|---------|
 | Open Iframe | `IframeEvent` | `{"url": "iframe url"}` | Opens an iframe overlay |
-| Close Iframe | `IframeStopEvent` | `{"iframeUrl": "iframe url"}` | Closes a specific iframe |
+| Close Iframe | `IframeStopEvent` | `{"iframeUrl": "iframe url"}` | Closes a specific iframe (URL must match exactly, including query params) |
+| Close All Iframes | `IframeStopEvent` | `{"closeAll": true, "iframeUrl": ""}` | Closes every open iframe at once |
 | Send Message | `SendMessageToIframes` | `{"iframeMsg": "text"}` | Sends text to all open iframes |
 
 These work as standard effects — wrap them in `TaskTriggerSubscription` (basic) or `TaskEffectorSubscription` (quest-driven). See [interactions.md](interactions.md).
@@ -22,8 +23,22 @@ These work as standard effects — wrap them in `TaskTriggerSubscription` (basic
 ```python
 from portals_effects import effector_open_iframe, effector_close_iframe, effector_send_iframe_message
 
-effector_open_iframe("https://example.com/hud.html", maximized=True, no_close_btn=True)
+# Full-screen HUD overlay (click-through, no blur)
+effector_open_iframe("https://example.com/hud.html",
+    maximized=True, no_close_btn=True, no_blur=True, no_pointer_events=True)
+
+# Positioned minimap (bottom-right corner)
+effector_open_iframe("https://example.com/minimap.html",
+    no_close_btn=True, no_blur=True, no_pointer_events=True,
+    right=20, bottom=20, z_index=2)
+
+# Close a specific iframe
 effector_close_iframe("https://example.com/hud.html")
+
+# Close ALL open iframes
+effector_close_iframe(close_all=True)
+
+# Send a message to all open iframes
 effector_send_iframe_message("score: 42")
 ```
 
@@ -33,16 +48,20 @@ Append these to the iframe URL to control its appearance:
 
 | Parameter | Effect |
 |-----------|--------|
-| `?noCloseBtn=true` | Hides the close button |
+| `?noCloseBtn=true` | Hides the close button (alias: `hideCloseButton`) |
 | `?hideMaximizeButton=true` | Hides the maximize button |
 | `?hideRefreshButton=true` | Hides the refresh button |
 | `?maximized=true` | Opens fullscreen |
 | `?forceClose=true` | X button closes instead of minimizing |
 | `?noBlur=true` | Disables background blur |
+| `?noPointerEvents=true` | Makes iframe click-through (passes input to game underneath). Essential for passive overlays like HUDs and minimaps. |
 | `?height=300` | Sets iframe height in pixels |
 | `?width=600` | Sets iframe width in pixels |
-| `?left=10` | Sets iframe left offset |
-| `?top=10` | Sets iframe top offset |
+| `?left=10` | Sets iframe left offset in pixels |
+| `?top=10` | Sets iframe top offset in pixels |
+| `?right=10` | Sets iframe right offset in pixels |
+| `?bottom=10` | Sets iframe bottom offset in pixels |
+| `?zIndex=10` | Controls stacking order when multiple iframes are open. Higher = on top. |
 
 Combine multiple: `https://example.com/hud.html?maximized=true&noCloseBtn=true&hideRefreshButton=true`
 
