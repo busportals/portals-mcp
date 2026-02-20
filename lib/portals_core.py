@@ -930,6 +930,87 @@ def create_enemy_npc(
     return (item, logic)
 
 
+def create_vehicle(
+    pos: Tuple[float, float, float],
+    glb_url: str,
+    acceleration: float = 37.0,
+    drag: float = 2.0,
+    max_speed: float = 80.0,
+    steering: float = 56.0,
+    drift: float = 1.87,
+    extra_steering_while_drifting: float = 1.38,
+    gravity: float = 34.0,
+    time_to_max_steer: float = 2.27,
+    max_distance_to_enter: float = 10.0,
+    rotation_point: Tuple[float, float, float] = (0, 0, 0),
+    exit_point: Tuple[float, float, float] = (1.8, 0, 0),
+    camera_offset: Tuple[float, float, float] = (0, 5, -9.4),
+    camera_rotation_speed: float = 8.0,
+    camera_follow_speed: float = 10.0,
+    rot: Tuple[float, float, float, float] = (0, 0, 0, 1),
+    scale: Tuple[float, float, float] = (1, 1, 1),
+) -> Tuple[Dict, Dict]:
+    """
+    Create Vehicle - driveable vehicle using any GLB model.
+
+    Args:
+        pos: World position (x, y, z)
+        glb_url: CDN URL for the vehicle GLB model
+        acceleration: How fast the vehicle accelerates
+        drag: Deceleration / friction
+        max_speed: Top speed cap
+        steering: Steering responsiveness
+        drift: Drift amount when turning at speed
+        extra_steering_while_drifting: Extra steering multiplier during drift
+        gravity: Downward force (higher = sticks to ground better)
+        time_to_max_steer: Seconds to reach full steering angle
+        max_distance_to_enter: Max distance player can enter from
+        rotation_point: Vehicle pivot point offset (x, y, z)
+        exit_point: Player exit position offset (x, y, z)
+        camera_offset: Chase camera position offset (x, y, z)
+        camera_rotation_speed: Camera rotation follow speed
+        camera_follow_speed: Camera position follow speed
+        rot: Quaternion rotation (qx, qy, qz, qw)
+        scale: Scale (x, y, z)
+
+    Returns:
+        (item_dict, logic_dict) tuple
+    """
+    def _transform_point(p):
+        return {
+            "position": [p[0], p[1], p[2]],
+            "rotation": [0, 0, 0, 1],
+            "scale": [-1, -1, -1]
+        }
+
+    item = create_base_item(
+        prefab_name="Vehicle",
+        pos=pos,
+        rot=rot,
+        scale=scale,
+        content_string=glb_url
+    )
+    logic = {
+        "acceleration": acceleration,
+        "drag": drag,
+        "maxSpeed": max_speed,
+        "steering": steering,
+        "drift": drift,
+        "extraSteeringWhileDrifting": extra_steering_while_drifting,
+        "gravity": gravity,
+        "timeToMaxSteer": time_to_max_steer,
+        "maxDistanceToEnter": max_distance_to_enter,
+        "rotationPoint": _transform_point(rotation_point),
+        "exitPoint": _transform_point(exit_point),
+        "cameraState": _transform_point(camera_offset),
+        "cameraRotationSpeed": camera_rotation_speed,
+        "cameraFollowSpeed": camera_follow_speed,
+        "Tasks": [],
+        "ViewNodes": []
+    }
+    return (item, logic)
+
+
 def create_leaderboard(
     pos: Tuple[float, float, float],
     game_name: str,

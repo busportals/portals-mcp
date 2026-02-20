@@ -1,8 +1,8 @@
-# Iframes
+# Iframes (Custom UI Layers)
 
-Iframes let you embed custom HTML/JS interfaces inside a Portals room. The system supports **bidirectional communication** — Portals can send data to iframes, and iframes can send commands back to the game engine.
+**Any time you need custom UI in a Portals room — HUDs, scoreboards, inventory screens, mini-games, maps, role reveals, controls panels, dialogue screens — you use iframes.**
 
-Use cases: HUDs, mini-games, dialogue screens, inventory UIs, scoreboards, role reveals, maps, controls panels.
+Iframes embed custom HTML/JS interfaces as overlays inside the room. The system supports **bidirectional communication** — Portals can push game state to your UI, and your UI can send commands back to the game engine (complete quests, close itself, return keyboard focus).
 
 ---
 

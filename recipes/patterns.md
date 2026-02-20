@@ -156,7 +156,7 @@ When a user names a game type, use these search terms to grep `recipes/manifest.
 |-----------|-------------|
 | Capture the Flag | team, capture, score, respawn, flag |
 | Escape Room | gate, lock, collect, timer, sequence, puzzle, keypad, code, pin |
-| Platformer | checkpoint, hazard, timer, collect, jump, platform |
+| Platformer / Side-Scroller | checkpoint, hazard, timer, collect, jump, platform, side-scroller, 2d, camera, section |
 | Scavenger Hunt | collect, npc, gate, quest, hidden, find |
 | PvP Arena | team, respawn, score, hazard, weapon, damage |
 | Wave Survival | round, wave, respawn, hazard, spawn, enemy |

@@ -647,6 +647,11 @@ Quick reference for every confirmed effect `$type` and its parameters. Use these
 | Respawn Destructible | `RespawnDestructible` |
 | Activate Trigger Zone | `ActivateTriggerZoneEffect` |
 | Deactivate Trigger Zone | `DeactivateTriggerZoneEffect` |
+| Turn to Player | `TurnToPlayer` |
+| Start Speaking | `StartSpeaking` |
+| Stop Speaking | `StopSpeaking` |
+| Enter Vehicle | `EnterVehicle` |
+| Exit Vehicle | `ExitVehicle` |
 | Revive Enemy | `ReviveEnemy` |
 | Reset Enemy | `ResetEnemy` |
 | Attack Player | `AttackPlayer` |
@@ -666,7 +671,7 @@ Quick reference for every confirmed effect `$type` and its parameters. Use these
 | Update Value | `UpdateScoreEvent` | `{"scoreChange": float}` or `{"op": int, "scoreChange": float}` — **omit `op` entirely to set value**. When `op` is present: 1=add, 2=sub, 3=mul, 4=div |
 | Update String Value | `UpdateScoreEventString` | `{"targetText": "text", "label": "name"}` |
 | Function Effect | `FunctionEffector` | `{"V": "NCalc expression"}` — **task names omit the numbered prefix**: quest `Name` uses `0_redteam` but NCalc uses just `'redteam'` (no `0_` prefix) in `SetTask()`, `$T{}`, `OnChange` |
-| Player Emote | `PlayerEmote` | `{"animationName": "emote"}` |
+| Player Emote | `PlayerEmote` | `{"animationName": "emote"}` — same animation list as `NpcAnimation`: Sitting, Can Can, Wave, Salute, Jive, Salsa, Shuffling, Chicken, Slide n Jive, Robot |
 | Camera Filter | `SetCameraFilter` | `{"url": "image url", "alpha": float}` |
 | Camera Zoom | `ChangeCameraZoom` | `{"zoomAmount": float, "lockZoom": bool}` |
 | Toggle Cursor Lock | `ToggleLockCursor` | `{"lockCursor": bool}` |
@@ -694,8 +699,12 @@ Quick reference for every confirmed effect `$type` and its parameters. Use these
 | Close Iframe | `IframeStopEvent` | `{"iframeUrl": "iframe url"}` — URL must match the opened iframe. See [iframes.md](iframes.md). |
 | NPC Message | `NPCMessageEvent` | `{"n": "npc name", "m": "message", "r": bool}` |
 | Walk NPC to Spot | `WalkNpcToSpot` | `{"walkSpeed": float, "endPosition": [x,y,z], "endRotation": [qx,qy,qz,qw]}` |
+| NPC Animation | `NpcAnimation` | `{"animationName": "Sitting"}` — same animation list as `PlayerEmote`. GLBNPC-only |
+| NPC Copy Player Path | `NpcCopyPlayerPath` | `{"positions": [[x,y,z],...], "rotations": [[qx,qy,qz,qw],...], "animatorParameterDatas": [...], "shouldLoop": bool}` — GLBNPC walks along recorded path |
+| NPC Stop Path | `NpcCopyPlayerPathStop` | `{"RP": bool}` — stops path following. `RP: true` = reset to original position. GLBNPC-only |
 | Show Token Swap | `DisplaySellSwap` | `{"id": "swap config id", "typ": int}` |
 | Change Enemy Health | `ChangeEnemyHealth` | `{"op": int, "healthChange": int}` — `op`: 1=add, 2=sub. EnemyNPC-only. |
+| Vehicle Boost | `VehicleBoost` | `{"duration": float, "speedOfBoost": float, "rampUpTime": float, "rampDownTime": float}` — temporary speed boost. Vehicle-only. |
 | Duplicate Enemy | `DuplicateEnemy` | `{"spawnName": "spawn name", "count": int, "randomRadius": float}` — spawns copies at named SpawnPoint. EnemyNPC-only. |
 
 ### Complex Effects
@@ -719,7 +728,13 @@ Quick reference for every confirmed effect `$type` and its parameters. Use these
 - `RespawnDestructible`: No parameters. Respawns a destroyed Destructible item. Attach to Destructible items.
 - `ActivateTriggerZoneEffect` / `DeactivateTriggerZoneEffect`: No parameters. Enable/disable a Trigger zone so it stops/starts firing enter/exit events. Attach to Trigger items.
 - `PlayAnimationOnce`: `{"speed": float}` — plays a GLB animation once at the given speed. Negative speed plays in reverse.
-- `WalkNpcToSpot`: NPC-only. Walks the NPC to `endPosition` at `walkSpeed` (units/sec). The NPC plays a walk animation while moving. Attach to the GLBNPC item. Typically quest-driven — use one quest per waypoint to sequence movement (e.g., `STEP1` → walk to position A, `STEP2` → walk to position B). `endPosition` and `endRotation` are arrays, not objects.
+- `WalkNpcToSpot`: GLBNPC-only. Walks the NPC to `endPosition` at `walkSpeed` (units/sec). The NPC plays a walk animation while moving. Attach to the GLBNPC item. Typically quest-driven — use one quest per waypoint to sequence movement (e.g., `STEP1` → walk to position A, `STEP2` → walk to position B). `endPosition` and `endRotation` are arrays, not objects.
+- `NpcAnimation`: GLBNPC-only. Uses the same restricted animation list as `PlayerEmote` and the NPC `a` extraData field: `Sitting`, `Can Can`, `Wave`, `Salute`, `Jive`, `Salsa`, `Shuffling`, `Chicken`, `Slide n Jive`, `Robot`.
+- `NpcCopyPlayerPath`: GLBNPC-only. Makes the NPC walk along a recorded path. All three arrays (`positions`, `rotations`, `animatorParameterDatas`) must have the same length. Set `shouldLoop: true` for continuous patrol.
+- `NpcCopyPlayerPathStop`: GLBNPC-only. Stops path following. Set `RP: true` to reset the NPC to its original position.
+- `TurnToPlayer`: GLBNPC-only. Makes the NPC turn to face the player who activated the effect. No parameters.
+- `StartSpeaking`: GLBNPC-only. Starts the NPC's talking animation (purely visual — does not trigger AI conversation). No parameters.
+- `StopSpeaking`: GLBNPC-only. Stops the NPC's talking animation. No parameters.
 - `ReviveEnemy`: No parameters. Revives a dead EnemyNPC. Attach to EnemyNPC items. Typically quest-driven — use `ReviveEnemy` on a quest completion to respawn enemies after a timer or event.
 - `ResetEnemy`: No parameters. Respawns the enemy with fresh health at its original position. Attach to EnemyNPC items.
 - `AttackPlayer`: No parameters. Forces the NPC to immediately attack the nearest player. Attach to EnemyNPC items.
@@ -727,6 +742,11 @@ Quick reference for every confirmed effect `$type` and its parameters. Use these
 - `DuplicateEnemy`: `{"spawnName": "spawn name", "count": int, "randomRadius": float}` — spawns copies of the NPC at a named SpawnPoint. Set a SpawnPoint's `n` field and reference it in `spawnName`. Useful for creating enemy swarms.
 - `OnEnemyDied`: EnemyNPC-only trigger. `{"$type": "OnEnemyDied", "RTime": float, "Delay": float}`. `RTime` is the respawn timer (seconds), `Delay` is fire delay. Use to trigger loot drops, score updates, or respawn sequences when an enemy is killed.
 - `OnTakeDamageTrigger`: EnemyNPC-only trigger. No parameters. Fires when the NPC takes damage. Use for reactive behaviors like aggro-on-hit or spawning reinforcements.
+- `EnterVehicle`: No parameters. Forces the player into the vehicle. Attach to Vehicle items. Typically triggered via `OnClickEvent` when player is within `maxDistanceToEnter` range.
+- `ExitVehicle`: No parameters. Forces the player out of the vehicle. Attach to Vehicle items.
+- `VehicleBoost`: `{"duration": float, "speedOfBoost": float, "rampUpTime": float, "rampDownTime": float}` — applies a temporary speed boost. Attach to Vehicle items. `rampUpTime` smoothly accelerates to boost speed, `rampDownTime` smoothly decelerates back to normal.
+- `OnVehicleEntered`: Vehicle-only trigger. No parameters. Fires when a player enters the vehicle. Use for UI changes, sound effects, or starting sequences.
+- `OnVehicleExited`: Vehicle-only trigger. No parameters. Fires when a player exits the vehicle. Use for cleanup, UI reset, or stop sequences.
 
 ---
 
@@ -779,6 +799,70 @@ All general triggers use bare `{"$type": "TriggerName"}` with no extra params.
   "TargetState": 181,
   "Name": "quest-name",
   "TaskTriggerId": "quest-id"
+}
+```
+
+### Vehicle Triggers (prefabName: "Vehicle")
+
+| Trigger | `$type` | Notes |
+|---------|---------|-------|
+| Vehicle Entered | `OnVehicleEntered` | Player enters the vehicle. No parameters. |
+| Vehicle Exited | `OnVehicleExited` | Player exits the vehicle. No parameters. |
+
+**Example — OnVehicleEntered trigger with notification:**
+```json
+{
+  "$type": "TaskTriggerSubscription",
+  "Trigger": {"$type": "OnVehicleEntered"},
+  "DirectEffector": {
+    "Effector": {"$type": "NotificationPillEvent", "nt": "Welcome aboard!", "c": "00FF00"},
+    "Id": "unique-uuid",
+    "TargetState": 2,
+    "Name": ""
+  },
+  "Id": "unique-uuid",
+  "TargetState": 2,
+  "Name": ""
+}
+```
+
+### Vehicle Effects (prefabName: "Vehicle")
+
+| Effect | `$type` | Notes |
+|--------|---------|-------|
+| Enter Vehicle | `EnterVehicle` | Forces player into the vehicle. No parameters. |
+| Exit Vehicle | `ExitVehicle` | Forces player out of the vehicle. No parameters. |
+| Vehicle Boost | `VehicleBoost` | Temporary speed boost with ramp-up/down. |
+
+**VehicleBoost parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `duration` | float | Total boost duration in seconds |
+| `speedOfBoost` | float | Boost speed value |
+| `rampUpTime` | float | Seconds to reach full boost speed |
+| `rampDownTime` | float | Seconds to return to normal speed |
+
+**Example — click to boost:**
+```json
+{
+  "$type": "TaskTriggerSubscription",
+  "Trigger": {"$type": "OnClickEvent"},
+  "DirectEffector": {
+    "Effector": {
+      "$type": "VehicleBoost",
+      "duration": 5.0,
+      "speedOfBoost": 200.0,
+      "rampUpTime": 1.0,
+      "rampDownTime": 1.5
+    },
+    "Id": "unique-uuid",
+    "TargetState": 2,
+    "Name": ""
+  },
+  "Id": "unique-uuid",
+  "TargetState": 2,
+  "Name": ""
 }
 ```
 

@@ -46,7 +46,7 @@ Press X to activate:
 
 **Python generator:**
 ```python
-from scripts.portals_core import create_trigger
+from portals_core import create_trigger
 
 # Auto-trigger zone
 death_zone = create_trigger(
@@ -95,7 +95,7 @@ Launches players into the air when stepped on.
 
 **Python generator:**
 ```python
-from scripts.portals_core import create_jump_pad
+from portals_core import create_jump_pad
 
 # Medium jump
 pad = create_jump_pad(
@@ -221,6 +221,22 @@ These are the platform defaults when you place a gun and only set `weaponType`. 
 | `f` | `false` | Camera fade. `true` = object fades instead of camera colliding. |
 | `r` | `false` | Remove first frame. `true` = removes frame 0 from animated GLBs. |
 
+### Gun Triggers & Effects
+
+Guns have dedicated triggers and effects (see [interactions.md](../interactions.md)):
+
+| Type | `$type` | Description |
+|------|---------|-------------|
+| **Trigger** | `OnGunEquippedTrigger` | Fires when a player equips the gun. Optional `Delay` field. |
+| **Trigger** | `ShotHitTrigger` | Fires when a bullet hits a target |
+| **Trigger** | `GotKillTrigger` | Fires when the player gets a kill with this gun |
+| **Trigger** | `StartedAimingTrigger` | Fires when the player starts aiming down sights |
+| **Trigger** | `StoppedAimingTrigger` | Fires when the player stops aiming |
+| **Trigger** | `OnGunTossedTrigger` | Fires when the player drops/tosses the gun |
+| **Effect** | `EquipGunEffect` | Forces the player to equip this gun (no parameters) |
+| **Effect** | `TossGunEffect` | Forces the player to drop their equipped gun (no parameters) |
+| **Effect** | `ResetGunEffect` | Resets gun state — ammo, reload (no parameters) |
+
 ---
 
 ## Shotgun
@@ -311,32 +327,95 @@ Set the `contentString` to one of these values:
 
 ---
 
+## Vehicle
+
+Driveable vehicle that any GLB model can power. Players enter/exit the vehicle and drive it around using standard movement controls. Physics are configured per-vehicle via extraData fields, with optional room-level defaults in `carSettings` (see [settings.md](../settings.md)).
+
+**Base structure:**
+```json
+{
+  "prefabName": "Vehicle",
+  "pos": {"x": 0, "y": 0.5, "z": 0},
+  "rot": {"x": 0, "y": 0, "z": 0, "w": 1},
+  "scale": {"x": 1, "y": 1, "z": 1},
+  "contentString": "#userId/model-filename.glb",
+  "extraData": "{\"acceleration\":37.0,\"drag\":2.0,\"maxSpeed\":80.0,\"steering\":56.0,\"drift\":1.87,\"extraSteeringWhileDrifting\":1.38,\"gravity\":34.0,\"timeToMaxSteer\":2.27,\"maxDistanceToEnter\":10.0,\"rotationPoint\":{\"position\":[0,0,0],\"rotation\":[0,0,0,1],\"scale\":[-1,-1,-1]},\"exitPoint\":{\"position\":[1.8,0,0],\"rotation\":[0,0,0,1],\"scale\":[-1,-1,-1]},\"cameraState\":{\"position\":[0,5,-9.4],\"rotation\":[0,0,0,1],\"scale\":[-1,-1,-1]},\"cameraRotationSpeed\":8.0,\"cameraFollowSpeed\":10.0,\"Tasks\":[],\"ViewNodes\":[]}"
+}
+```
+
+**Key points:**
+- Any GLB can be used as the vehicle model — set via `contentString` (same CDN URL format as GLB items)
+- Players enter by proximity (within `maxDistanceToEnter` units) and interact
+- Vehicle uses its own physics separate from player movement
+- Per-vehicle settings in extraData override room-level `carSettings`
+
+### Vehicle Physics
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `acceleration` | float | How fast the vehicle accelerates |
+| `drag` | float | Deceleration / friction when not accelerating |
+| `maxSpeed` | float | Top speed cap |
+| `steering` | float | Steering responsiveness / turn rate |
+| `drift` | float | Drift amount when turning at speed |
+| `extraSteeringWhileDrifting` | float | Additional steering multiplier during drift |
+| `gravity` | float | Downward force (higher = sticks to ground better) |
+| `timeToMaxSteer` | float | Seconds to reach full steering angle |
+| `maxDistanceToEnter` | float | Max distance from which player can enter the vehicle |
+
+### Vehicle Spatial Points
+
+These define relative offsets from the vehicle's origin. All use `{position, rotation, scale}` format where scale is typically `[-1, -1, -1]`.
+
+| Key | Description |
+|-----|-------------|
+| `rotationPoint` | Pivot point the vehicle rotates around (relative to model center) |
+| `exitPoint` | Where the player appears when exiting the vehicle |
+| `cameraState` | Chase camera position (relative to vehicle). Typically behind and above, e.g., `[0, 5, -9.4]` |
+
+### Vehicle Camera
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `cameraRotationSpeed` | float | How fast the chase camera rotates to follow the vehicle |
+| `cameraFollowSpeed` | float | How fast the chase camera catches up to the vehicle position |
+
+### Vehicle Triggers & Effects
+
+Vehicles have dedicated triggers and effects (see [interactions.md](../interactions.md)):
+
+| Type | `$type` | Description |
+|------|---------|-------------|
+| **Trigger** | `OnVehicleEntered` | Fires when a player enters the vehicle |
+| **Trigger** | `OnVehicleExited` | Fires when a player exits the vehicle |
+| **Effect** | `EnterVehicle` | Forces the player into the vehicle |
+| **Effect** | `ExitVehicle` | Forces the player out of the vehicle |
+| **Effect** | `VehicleBoost` | Applies a temporary speed boost |
+
+---
+
 ## Trigger + Effects Pattern
 
 Triggers become powerful when combined with effects in the `Tasks` array:
 
 **Example: Death zone that teleports player back to spawn**
 ```python
-from scripts.portals_effects import create_enter_trigger, create_teleport_effect
+from portals_core import create_trigger
+from portals_effects import basic_interaction, trigger_on_enter, effector_teleport, add_task_to_logic
 
-# Create quest for death system
-death_quest = create_quest_pair(0, "death", "Respawn system")
+items = {}
+logic = {}
 
-# Trigger with teleport effect
-death_zone = create_trigger(pos=(0, -10, 0), scale=(100, 1, 100))
-death_zone["extraData"] = format_extra_data({
-    "events": [],
-    "cm": "",
-    "Tasks": [
-        create_enter_trigger(
-            quest_id=death_quest["quest_id"],
-            quest_name=death_quest["quest_name"],
-            target_state=1,
-            effect=create_teleport_effect(spawn_name="")
-        )
-    ],
-    "ViewNodes": []
-})
+# Create death zone trigger
+id_ = "death_zone"
+items[id_], logic[id_] = create_trigger(pos=(0, -10, 0), scale=(100, 1, 100))
+
+# Wire enter -> teleport to default spawn
+task = basic_interaction(
+    trigger=trigger_on_enter(),
+    effector=effector_teleport(room_id="YOUR_ROOM_ID", spawn_name="")
+)
+add_task_to_logic(logic[id_], task)
 ```
 
-See [effects/transform.md](../effects/transform.md) and [systems/quests.md](../systems/quests.md) for more on triggers and effects.
+See [interactions.md](../interactions.md) and [quests.md](../quests.md) for more on triggers and effects.

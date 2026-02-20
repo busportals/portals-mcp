@@ -36,7 +36,7 @@ The `contentString` holds the GLB model URL. Two types are supported:
 - `events`: Array of events. Usually `[]`.
 - `tags`: Array of tags. Usually `[]`.
 
-**Permitted NPC animations:**
+**Permitted animations (shared with `PlayerEmote` and `NpcAnimation`):**
 
 | Animation Name |
 |---------------|
@@ -51,7 +51,176 @@ The `contentString` holds the GLB model URL. Two types are supported:
 | `Slide n Jive` |
 | `Robot` |
 
-Use an empty string `""` for the default idle animation.
+This is the same animation list used by the `PlayerEmote` effect and the `NpcAnimation` effect. Use an empty string `""` for the default idle animation.
+
+### Available Robot NPC Models
+
+Built-in robot avatar models for GLBNPC. All are rigged with walk/idle/talk animations. Default scale is 1.0.
+
+| Model | contentString URL |
+|-------|-------------------|
+| **Robot Orange** | `https://firebasestorage.googleapis.com/v0/b/portals-1b487.appspot.com/o/GLBs%2FRobot_NPC_Default_Orange.glb?alt=media&token=e119cef4-bdbb-481d-9504-6cdbbf2e1df0` |
+| **Robot Yellow** | `https://firebasestorage.googleapis.com/v0/b/portals-1b487.appspot.com/o/GLBs%2FRobot_NPC_Default_Yellow.glb?alt=media&token=24142b58-2c9e-4b1f-b26e-edbb4eadb3c6` |
+| **Robot Red** | `https://firebasestorage.googleapis.com/v0/b/portals-1b487.appspot.com/o/GLBs%2FRobot_NPC_Default_Red.glb?alt=media&token=c261ac38-8c60-43d0-8c98-a6dc77e64b9a` |
+| **Robot Navy** | `https://firebasestorage.googleapis.com/v0/b/portals-1b487.appspot.com/o/GLBs%2FRobot_NPC_Default_Navy.glb?alt=media&token=3122756b-55ea-41f9-ba67-ef889bfa7d30` |
+| **Robot Purple** | `https://firebasestorage.googleapis.com/v0/b/portals-1b487.appspot.com/o/GLBs%2FRobot_NPC_Default_Purple.glb?alt=media&token=ba9a5bf0-c20b-4483-86b1-1633e3ae64c6` |
+| **Robot Green** | `https://firebasestorage.googleapis.com/v0/b/portals-1b487.appspot.com/o/GLBs%2FRobot_NPC_Default_Green.glb?alt=media&token=5a9925e8-4c65-482f-b577-5c68892d8d59` |
+
+**URL shorthand:** Portals also supports a `~` prefix as shorthand for the Firebase storage base URL. For example, `~Robot_NPC_Default_Orange.glb?alt=media&token=...` resolves to the full URL above. Both formats work in `contentString`.
+
+**Scaling with FixedSize:** To scale a robot NPC larger, append `&FixedSize=<float>&overrideSize=true` to the URL and set the item's `scale` to match. For example, scale 2.85: `...&FixedSize=2.854788&overrideSize=true` with `scale: {x: 2.85, y: 2.85, z: 2.85}`.
+
+### NPC-Specific Effects
+
+These effects only work on GLBNPC items. They control NPC behavior — animation, movement, facing, and speaking.
+
+#### `NpcAnimation`
+
+Plays a named animation on the NPC. Uses the same restricted animation list as the `PlayerEmote` effect and the NPC `a` extraData field (see table above).
+
+```json
+{"$type": "NpcAnimation", "animationName": "Sitting"}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `animationName` | string | Animation to play. See permitted animations table above. |
+
+#### `NpcCopyPlayerPath`
+
+Makes the NPC walk along a recorded path of positions and rotations with matching animator parameters. The path is typically recorded from a player's movement in the editor.
+
+```json
+{
+  "$type": "NpcCopyPlayerPath",
+  "positions": [[x, y, z], [x, y, z], ...],
+  "rotations": [[qx, qy, qz, qw], [qx, qy, qz, qw], ...],
+  "animatorParameterDatas": [
+    {"g": true, "d": "0.0", "a": "0.0", "v": "-4.0", "i": "0.0", "o": "0.0", "m": "0.0", "r": "0.0"},
+    ...
+  ],
+  "shouldLoop": false
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `positions` | array of [x,y,z] | Waypoint positions along the path |
+| `rotations` | array of [qx,qy,qz,qw] | Quaternion rotations at each waypoint |
+| `animatorParameterDatas` | array of objects | Animator state at each waypoint. Keys: `g` (grounded), `d` (direction), `a` (angle), `v` (vertical velocity), `i` (input magnitude), `o` (output speed), `m` (movement speed), `r` (rotation speed). Optional `s` (sprinting). |
+| `shouldLoop` | bool | `true` = NPC loops the path continuously. Default `false`. |
+
+All three arrays must have the same length. Each index represents one frame/waypoint of the path.
+
+#### `NpcCopyPlayerPathStop`
+
+Stops the NPC from following its current path.
+
+```json
+{"$type": "NpcCopyPlayerPathStop"}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `RP` | bool | Optional. `true` = reset the NPC to its original position after stopping. |
+
+#### `TurnToPlayer`
+
+Makes the NPC turn to face the player who activated the effect.
+
+```json
+{"$type": "TurnToPlayer"}
+```
+
+No parameters.
+
+#### `WalkNpcToSpot`
+
+Walks the NPC to a target position at a given speed, playing a walk animation.
+
+```json
+{"$type": "WalkNpcToSpot", "walkSpeed": 3.0, "endPosition": [0, 0, 10], "endRotation": [0, 0, 0, 1]}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `walkSpeed` | float | Movement speed in units/sec |
+| `endPosition` | [x,y,z] | Target world position |
+| `endRotation` | [qx,qy,qz,qw] | Final rotation after arriving |
+
+#### `StartSpeaking`
+
+Starts the NPC's talking animation. Does not trigger AI conversation — purely visual.
+
+```json
+{"$type": "StartSpeaking"}
+```
+
+No parameters.
+
+#### `StopSpeaking`
+
+Stops the NPC's talking animation.
+
+```json
+{"$type": "StopSpeaking"}
+```
+
+No parameters.
+
+#### Common NPC Effect Patterns
+
+**NPC patrol loop (walk path that repeats):**
+```json
+{
+  "$type": "TaskTriggerSubscription",
+  "Trigger": {"$type": "OnPlayerLoggedIn"},
+  "DirectEffector": {
+    "Effector": {
+      "$type": "NpcCopyPlayerPath",
+      "positions": [[0, 0, 0], [5, 0, 0], [5, 0, 5], [0, 0, 5]],
+      "rotations": [[0, 0, 0, 1], [0, 0.707, 0, 0.707], [0, 1, 0, 0], [0, -0.707, 0, 0.707]],
+      "animatorParameterDatas": [
+        {"g": true, "d": "0.0", "a": "0.0", "v": "-4.0", "i": "0.0", "o": "1.0", "m": "1.5", "r": "0.0"},
+        {"g": true, "d": "0.0", "a": "0.0", "v": "-4.0", "i": "0.0", "o": "1.0", "m": "1.5", "r": "0.0"},
+        {"g": true, "d": "0.0", "a": "0.0", "v": "-4.0", "i": "0.0", "o": "1.0", "m": "1.5", "r": "0.0"},
+        {"g": true, "d": "0.0", "a": "0.0", "v": "-4.0", "i": "0.0", "o": "1.0", "m": "1.5", "r": "0.0"}
+      ],
+      "shouldLoop": true
+    },
+    "Id": "unique-uuid",
+    "TargetState": 2,
+    "Name": ""
+  },
+  "Id": "unique-uuid",
+  "TargetState": 2,
+  "Name": ""
+}
+```
+
+**NPC greets player (turn + speak animation):**
+```json
+[
+  {
+    "$type": "TaskTriggerSubscription",
+    "Trigger": {"$type": "OnEnterEvent"},
+    "DirectEffector": {
+      "Effector": {"$type": "TurnToPlayer"},
+      "Id": "unique-uuid", "TargetState": 2, "Name": ""
+    },
+    "Id": "unique-uuid", "TargetState": 2, "Name": ""
+  },
+  {
+    "$type": "TaskTriggerSubscription",
+    "Trigger": {"$type": "OnEnterEvent"},
+    "DirectEffector": {
+      "Effector": {"$type": "StartSpeaking"},
+      "Id": "unique-uuid", "TargetState": 2, "Name": ""
+    },
+    "Id": "unique-uuid", "TargetState": 2, "Name": ""
+  }
+]
+```
 
 ---
 

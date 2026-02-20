@@ -9,7 +9,7 @@ Quick reference for all item types, triggers, effects, and systems available in 
 |----------|-------|-------------|------|
 | **Building** | Cube, Text, Portal, Spawn | ResizableCube, WorldText, Portal, SpawnPoint | [reference/items/building.md](reference/items/building.md) |
 | **Models** | GLB, Collectible, Destructible | GLB, GlbCollectable, Destructible | [reference/items/models.md](reference/items/models.md) |
-| **Gameplay** | Trigger, Jump Pad, Elemental, Gun, Shotgun, Camera | Trigger, JumpPad, 9Cube, Gun, Shotgun, CameraObject | [reference/items/gameplay.md](reference/items/gameplay.md) |
+| **Gameplay** | Trigger, Jump Pad, Elemental, Gun, Shotgun, Camera, Vehicle | Trigger, JumpPad, 9Cube, Gun, Shotgun, CameraObject, Vehicle | [reference/items/gameplay.md](reference/items/gameplay.md) |
 | **Media** | Image, Video, Screenshare | DefaultPainting, DefaultVideo, PlaceableTV | [reference/items/media.md](reference/items/media.md) |
 | **Lighting** | Light, Blink Light, Spotlight | Light, BlinkLight, SpotLight | [reference/items/lighting.md](reference/items/lighting.md) |
 | **Display** | Leaderboard, Chart, Billboard | Leaderboard, Chart, GLBSign | [reference/items/display.md](reference/items/display.md) |
@@ -47,43 +47,202 @@ Quick reference for all item types, triggers, effects, and systems available in 
 | **Swap Volume** | SwapVolume | Swap volume trigger |
 | **Item Destroyed** | OnDestroyedEvent | Destructible item destroyed |
 | **Gun Equipped** | OnGunEquippedTrigger | Player equips a gun (Gun/Shotgun only) |
+| **Shot Hit** | ShotHitTrigger | Bullet hits target (Gun/Shotgun only) |
+| **Got Kill** | GotKillTrigger | Player gets a kill (Gun/Shotgun only) |
+| **Started Aiming** | StartedAimingTrigger | Player aims down sights (Gun/Shotgun only) |
+| **Stopped Aiming** | StoppedAimingTrigger | Player stops aiming (Gun/Shotgun only) |
+| **Gun Tossed** | OnGunTossedTrigger | Player drops gun (Gun/Shotgun only) |
+| **Vehicle Entered** | OnVehicleEntered | Player enters vehicle (Vehicle only) |
+| **Vehicle Exited** | OnVehicleExited | Player exits vehicle (Vehicle only) |
 | **Enemy Died** | OnEnemyDied | Enemy NPC killed (EnemyNPC only) |
 | **Take Damage** | OnTakeDamageTrigger | Enemy NPC took damage (EnemyNPC only) |
 
 ## Effects
 
+### Visibility
+
 | Effect | $type | Use Case |
 |--------|-------|----------|
-| **MoveToSpot** | MoveToSpot | Animate position/rotation/scale |
+| **Show** | ShowObjectEvent | Reveal a hidden item |
+| **Hide** | HideObjectEvent | Hide an item (invisible + no collider) |
+| **Show Outline** | ShowOutline | Show selection outline |
+| **Hide Outline** | HideOutline | Remove selection outline |
+
+### Movement & Transform
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **MoveToSpot** | MoveToSpot | Animate position/rotation/scale (absolute or relative) |
 | **PortalsAnimation** | PortalsAnimation | Multi-keyframe animation |
-| **Show/Hide** | ShowObjectEvent / HideObjectEvent | Toggle visibility |
-| **Teleport** | TeleportEvent | Move player to room/spawn |
-| **Run Triggers** | RunTriggersFromEffector | Chain quest states |
-| **Heal/Damage** | ChangePlayerHealth | Modify HP |
-| **Lock Movement** | LockMovement / UnlockMovement | Freeze/unfreeze player |
-| **Notification** | NotificationPillEvent | Toast message |
-| **Display Value** | DisplayValueEvent | Show variable UI |
-| **Update Value** | UpdateScoreEvent | Modify numeric variable |
-| **Function Effect** | FunctionEffector | NCalc expression |
-| **Play Sound** | PlaySoundOnce | One-shot audio |
 | **Duplicate** | DuplicateItem | Clone item at position |
-| **Change Bloom** | ChangeBloom | Post-processing bloom |
+| **Move to Player** | MoveItemToPlayer | Teleport item to player's position |
+
+### Player Effects
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Velocity** | AddVelocityToPlayer | Launch/push player |
+| **Teleport** | TeleportEvent | Move player to room/spawn |
+| **Heal** | ChangePlayerHealth | Heal player |
+| **Damage** | ChangePlayerHealth (op:2) | Damage player |
+| **Damage Over Time** | DamageOverTime | Continuous damage on contact |
+| **Lock Movement** | LockMovement | Freeze player |
+| **Unlock Movement** | UnlockMovement | Unfreeze player |
+| **Start Auto Run** | StartAutoRun | Force auto-run |
+| **Stop Auto Run** | StopAutoRun | Stop auto-run |
+| **Emote** | PlayerEmote | Play emote animation |
+| **Mute** | MutePlayer | Mute player mic |
+| **Hide All Players** | HideAllPlayersEvent | Hide other players |
+| **Lock Avatar** | LockAvatarChange | Prevent avatar change |
+| **Unlock Avatar** | UnlockAvatarChange | Allow avatar change |
+| **Avatar Screen** | DisplayAvatarScreen | Open avatar selection |
+| **Change Avatar** | ChangeAvatarEffector | Set avatar to GLB |
+| **Movement Profile** | ChangeMovementProfile | Switch movement settings |
+| **Equip Wearable** | ChangeRoundyWearableEffector | Equip wearable item |
+
+### Camera
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Lock Camera** | LockCamera | Lock camera position |
+| **Unlock Camera** | UnlockCamera | Unlock camera |
+| **Zoom** | ChangeCameraZoom | Change zoom level |
+| **Free Cam** | ToggleFreeCam | Toggle free camera |
+| **Cam State** | ChangeCamState | Switch to named camera state |
+| **Filter** | SetCameraFilter | Apply image overlay |
+| **Cursor Lock** | ToggleLockCursor | Lock/unlock mouse cursor |
+
+### UI & Notifications
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Notification** | NotificationPillEvent | Toast message on screen |
+
+### Values (Variables)
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Display Value** | DisplayValueEvent | Show variable on HUD |
+| **Hide Value** | HideValueEvent | Hide variable from HUD |
+| **Update Value** | UpdateScoreEvent | Modify numeric variable |
+| **Update String** | UpdateScoreEventString | Set string variable |
+
+### Logic & Control
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Function** | FunctionEffector | NCalc expression |
+| **Run Triggers** | RunTriggersFromEffector | Chain quest states |
+| **Reset All Tasks** | ResetAllTasks | Reset all quests |
+
+### Timers
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Start Timer** | StartTimerEffect | Start a named timer |
+| **Stop Timer** | StopTimerEffect | Stop timer (fires OnTimerStopped) |
+| **Cancel Timer** | CancelTimerEffect | Cancel timer silently |
+
+### Leaderboard
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Post Score** | PostScoreToLeaderboard | Post score to leaderboard |
+| **Clear** | ClearLeaderboard | Clear a leaderboard |
+| **Open** | OpenLeaderboardEffect | Open leaderboard UI |
+
+### Audio
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Play Once** | PlaySoundOnce | One-shot sound effect |
+| **Play Loop** | PlaySoundInALoop | Looping ambient/music |
+| **Stop Sound** | StopSound | Stop a playing sound |
+| **Change Audius** | ChangeAudiusEffect | Change music playlist |
+
+### Environment
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Bloom** | ChangeBloom | Adjust bloom post-processing |
+| **Time of Day** | ChangeTimeOfDay | Cycle lighting/skybox |
 | **Rotate Skybox** | RotateSkybox | Rotate sky background |
-| **Camera** | LockCamera / ChangeCameraZoom / SetCameraFilter | Camera control |
-| **Timers** | StartTimerEffect / StopTimerEffect / CancelTimerEffect | Timer control |
-| **Trigger Zone** | ActivateTriggerZoneEffect / DeactivateTriggerZoneEffect | Enable/disable trigger zones |
-| **Gun Control** | EquipGunEffect / TossGunEffect / ResetGunEffect | Equip, drop, or reset guns |
-| **Destructible** | RespawnDestructible | Respawn destroyed items |
-| **Revive Enemy** | ReviveEnemy | Revive dead EnemyNPC |
-| **Reset Enemy** | ResetEnemy | Reset EnemyNPC to original state |
-| **Attack Player** | AttackPlayer | Force EnemyNPC to attack |
-| **Change Enemy HP** | ChangeEnemyHealth | Modify EnemyNPC health |
-| **Duplicate Enemy** | DuplicateEnemy | Spawn copies of EnemyNPC at SpawnPoint |
-| **GLB Animation** | PlayAnimationOnce | Play model animation once (supports reverse) |
-| **Walk NPC** | WalkNpcToSpot | Walk NPC to position (speed, endPosition, endRotation) |
+| **Fog** | ChangeFog | Change fog color/distance |
+
+### Communication & Iframes
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Send to Iframes** | SendMessageToIframes | Push data to open iframes |
+| **Voice Group** | ChangeVoiceGroup | Move player to voice group |
 | **Open Iframe** | IframeEvent | Open HTML overlay |
 | **Close Iframe** | IframeStopEvent | Close HTML overlay |
-| **Send to Iframes** | SendMessageToIframes | Push data to open iframes |
+
+### NPC (GLBNPC only)
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **NPC Message** | NPCMessageEvent | Send message to AI NPC |
+| **Walk NPC** | WalkNpcToSpot | Walk NPC to position |
+| **NPC Animation** | NpcAnimation | Play named animation |
+| **NPC Path** | NpcCopyPlayerPath | NPC walks along recorded path |
+| **NPC Stop Path** | NpcCopyPlayerPathStop | Stop NPC path following |
+| **Turn to Player** | TurnToPlayer | NPC faces activating player |
+| **Start Speaking** | StartSpeaking | Start talking animation |
+| **Stop Speaking** | StopSpeaking | Stop talking animation |
+
+### Gun (Gun/Shotgun only)
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Equip Gun** | EquipGunEffect | Auto-equip the gun |
+| **Toss Gun** | TossGunEffect | Force drop equipped gun |
+| **Reset Gun** | ResetGunEffect | Reset ammo/reload |
+
+### EnemyNPC (EnemyNPC only)
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Revive Enemy** | ReviveEnemy | Revive dead EnemyNPC |
+| **Reset Enemy** | ResetEnemy | Reset to full health at origin |
+| **Attack Player** | AttackPlayer | Force attack nearest player |
+| **Change Enemy HP** | ChangeEnemyHealth | Modify enemy health |
+| **Duplicate Enemy** | DuplicateEnemy | Spawn copies at SpawnPoint |
+
+### Vehicle (Vehicle only)
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Enter Vehicle** | EnterVehicle | Force player into vehicle |
+| **Exit Vehicle** | ExitVehicle | Force player out of vehicle |
+| **Vehicle Boost** | VehicleBoost | Temporary speed boost |
+
+### Trigger Zone (Trigger only)
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Activate Zone** | ActivateTriggerZoneEffect | Re-enable trigger zone |
+| **Deactivate Zone** | DeactivateTriggerZoneEffect | Disable trigger zone |
+
+### Destructible (Destructible only)
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Respawn** | RespawnDestructible | Respawn destroyed item |
+
+### GLB Animation
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Play Animation** | PlayAnimationOnce | Play GLB animation once (negative speed = reverse) |
+
+### Other
+
+| Effect | $type | Use Case |
+|--------|-------|----------|
+| **Token Swap** | DisplaySellSwap / HideSellSwap | Show/hide token swap UI |
+| **Dialogue** | DialogEffectorDisplay | Interactive dialogue tree |
+| **Refresh Inventory** | RefreshUserInventory | Refresh inventory display |
 
 All trigger and effect schemas are in [reference/interactions.md](reference/interactions.md).
 
@@ -108,7 +267,7 @@ All trigger and effect schemas are in [reference/interactions.md](reference/inte
 | **Room Index** | Compact room representation — index, query, merge tools. **Never read snapshot.json directly.** | [reference/room-index.md](reference/room-index.md) |
 | **Movement** | Player physics, jump heights, gap widths, jump pad data, level design guidelines | [reference/movement-reference.md](reference/movement-reference.md) |
 | **Functions** | NCalc expressions for complex logic | [workflows/function-effects-reference.md](workflows/function-effects-reference.md) |
-| **Iframes** | Bidirectional HTML/JS overlays — custom UIs, mini-games, HUDs. SDK communication, variable interpolation, URL appearance control. | [reference/iframes.md](reference/iframes.md) |
+| **Iframes (Custom UI)** | **Any custom UI**: HUDs, scoreboards, inventory, mini-games, maps, overlays. Bidirectional HTML/JS communication, Portals SDK, variable interpolation, URL appearance control. | [reference/iframes.md](reference/iframes.md) |
 
 ## Coordinate System
 

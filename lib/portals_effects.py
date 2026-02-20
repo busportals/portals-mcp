@@ -33,8 +33,8 @@ from typing import Dict, List, Optional
 
 # ============================================================================
 # CANONICAL TYPE SETS (imported by validate_room.py and other tools)
-# These cover all general-purpose effects/triggers that have builder functions.
-# Item-specific types (gun, vehicle, destructible) are maintained in the validator.
+# These cover all effects/triggers that have builder functions,
+# including item-specific types (gun, vehicle, enemy, destructible).
 # ============================================================================
 
 EFFECT_TYPES = {
@@ -72,8 +72,12 @@ EFFECT_TYPES = {
     "SendMessageToIframes", "ChangeVoiceGroup",
     # Iframes
     "IframeEvent", "IframeStopEvent",
-    # NPC
+    # NPC (GLBNPC)
     "NPCMessageEvent", "WalkNpcToSpot",
+    "NpcAnimation", "NpcCopyPlayerPath", "NpcCopyPlayerPathStop",
+    "TurnToPlayer", "StartSpeaking", "StopSpeaking",
+    # Gun (Gun/Shotgun)
+    "EquipGunEffect", "TossGunEffect", "ResetGunEffect",
     # EnemyNPC
     "ReviveEnemy", "ResetEnemy", "AttackPlayer", "ChangeEnemyHealth", "DuplicateEnemy",
     # Token Swap
@@ -82,6 +86,14 @@ EFFECT_TYPES = {
     "DialogEffectorDisplay",
     # Inventory
     "RefreshUserInventory",
+    # Vehicle
+    "EnterVehicle", "ExitVehicle", "VehicleBoost",
+    # Trigger Zone
+    "ActivateTriggerZoneEffect", "DeactivateTriggerZoneEffect",
+    # Destructible
+    "RespawnDestructible",
+    # GLB Animation
+    "PlayAnimationOnce",
 }
 
 TRIGGER_TYPES = {
@@ -96,13 +108,20 @@ TRIGGER_TYPES = {
     "OnItemClickEvent", "PlayerLeave", "SwapVolume",
     # Trigger-cube-only
     "OnEnterEvent", "OnExitEvent",
+    # Gun-only (Gun/Shotgun)
+    "OnGunEquippedTrigger", "ShotHitTrigger", "GotKillTrigger",
+    "StartedAimingTrigger", "StoppedAimingTrigger", "OnGunTossedTrigger",
     # EnemyNPC-only
     "OnEnemyDied", "OnTakeDamageTrigger",
+    # Vehicle-only
+    "OnVehicleEntered", "OnVehicleExited",
+    # Destructible-only
+    "OnDestroyedEvent",
 }
 
 
 # ============================================================================
-# EFFECTOR BUILDERS (63 confirmed — ALL general effects)
+# EFFECTOR BUILDERS (86 confirmed — general + NPC + Gun + EnemyNPC + Vehicle + Destructible + TriggerZone + GLB animation)
 # Each returns the inner effector payload: {"$type": "...", ...params}
 # ============================================================================
 
@@ -848,6 +867,74 @@ def effector_npc_message(npc_name: str, message: str, repeatable: bool = True) -
     return {"$type": "NPCMessageEvent", "n": npc_name, "m": message, "r": repeatable}
 
 
+def effector_npc_animation(animation_name: str) -> Dict:
+    """Play a named animation on a GLBNPC. Attach to GLBNPC items.
+
+    Args:
+        animation_name: Animation to play (e.g. "Sitting", "Wave", "Salute").
+    """
+    return {"$type": "NpcAnimation", "animationName": animation_name}
+
+
+def effector_npc_copy_player_path(
+    positions: List[List[float]],
+    rotations: List[List[float]],
+    animator_params: Optional[List[Dict]] = None,
+    should_loop: bool = False
+) -> Dict:
+    """Make a GLBNPC walk along a recorded path. Attach to GLBNPC items.
+
+    Args:
+        positions: List of [x, y, z] waypoint positions.
+        rotations: List of [qx, qy, qz, qw] quaternion rotations at each waypoint.
+        animator_params: List of animator parameter dicts at each waypoint. If None,
+            generates default walking params for each waypoint.
+        should_loop: True = NPC loops the path continuously.
+    """
+    if animator_params is None:
+        default_param = {
+            "g": True, "d": "0.0", "a": "0.0", "v": "-4.0",
+            "i": "0.0", "o": "1.0", "m": "1.5", "r": "0.0"
+        }
+        animator_params = [dict(default_param, s=True) for _ in positions]
+    result = {
+        "$type": "NpcCopyPlayerPath",
+        "positions": positions,
+        "rotations": rotations,
+        "animatorParameterDatas": animator_params,
+    }
+    if should_loop:
+        result["shouldLoop"] = True
+    return result
+
+
+def effector_npc_copy_player_path_stop(reset_position: bool = False) -> Dict:
+    """Stop a GLBNPC from following its current path. Attach to GLBNPC items.
+
+    Args:
+        reset_position: True = reset the NPC to its original position after stopping.
+    """
+    result = {"$type": "NpcCopyPlayerPathStop"}
+    if reset_position:
+        result["RP"] = True
+    return result
+
+
+def effector_turn_to_player() -> Dict:
+    """Make a GLBNPC turn to face the player who activated the effect. Attach to GLBNPC items."""
+    return {"$type": "TurnToPlayer"}
+
+
+def effector_start_speaking() -> Dict:
+    """Start the GLBNPC's talking animation (visual only). Attach to GLBNPC items."""
+    return {"$type": "StartSpeaking"}
+
+
+def effector_stop_speaking() -> Dict:
+    """Stop the GLBNPC's talking animation. Attach to GLBNPC items."""
+    return {"$type": "StopSpeaking"}
+
+
 # ── Token Swap ─────────────────────────────────────────────────────────────
 
 def effector_show_token_swap(swap_id: str, typ: int = 3) -> Dict:
@@ -1008,6 +1095,36 @@ def effector_refresh_inventory() -> Dict:
     return {"$type": "RefreshUserInventory"}
 
 
+# ── Destructible ──────────────────────────────────────────────────────────
+
+def effector_respawn_destructible() -> Dict:
+    """Respawn a destroyed Destructible item. Attach to Destructible items."""
+    return {"$type": "RespawnDestructible"}
+
+
+# ── Trigger Zone ──────────────────────────────────────────────────────────
+
+def effector_activate_trigger_zone() -> Dict:
+    """Re-enable a Trigger zone so it fires enter/exit events. Attach to Trigger items."""
+    return {"$type": "ActivateTriggerZoneEffect"}
+
+
+def effector_deactivate_trigger_zone() -> Dict:
+    """Disable a Trigger zone so it stops firing enter/exit events. Attach to Trigger items."""
+    return {"$type": "DeactivateTriggerZoneEffect"}
+
+
+# ── GLB Animation ─────────────────────────────────────────────────────────
+
+def effector_play_animation_once(speed: float = 1.0) -> Dict:
+    """Play a GLB model's embedded animation once.
+
+    Args:
+        speed: Playback speed. 1.0 = normal. Negative = reverse playback.
+    """
+    return {"$type": "PlayAnimationOnce", "speed": speed}
+
+
 # ── EnemyNPC ──────────────────────────────────────────────────────────────
 
 def effector_revive_enemy() -> Dict:
@@ -1052,7 +1169,7 @@ def effector_duplicate_enemy(spawn_name: str, count: int = 1, random_radius: flo
 
 
 # ============================================================================
-# TRIGGER BUILDERS (25 confirmed: 21 general + 2 trigger-cube-only + 2 EnemyNPC-only)
+# TRIGGER BUILDERS (34 confirmed: 21 general + 2 trigger-cube-only + 1 Destructible-only + 2 EnemyNPC-only + 2 Vehicle-only + 6 Gun-only)
 # Each returns the inner trigger payload: {"$type": "..."}
 # ============================================================================
 
@@ -1190,6 +1307,117 @@ def trigger_enemy_died(rtime: float = 0.0, delay: float = 0.0) -> Dict:
 def trigger_take_damage() -> Dict:
     """Enemy NPC took damage. ONLY works on EnemyNPC items."""
     return {"$type": "OnTakeDamageTrigger"}
+
+
+# ── Destructible-Only Triggers (only work on prefabName: "Destructible") ──
+
+def trigger_destroyed() -> Dict:
+    """Destructible item was destroyed. ONLY works on Destructible items."""
+    return {"$type": "OnDestroyedEvent"}
+
+
+# ── Vehicle Triggers (prefabName: "Vehicle") ────────────────────────────────
+
+def trigger_vehicle_entered() -> Dict:
+    """Player entered the vehicle. ONLY works on Vehicle items."""
+    return {"$type": "OnVehicleEntered"}
+
+
+def trigger_vehicle_exited() -> Dict:
+    """Player exited the vehicle. ONLY works on Vehicle items."""
+    return {"$type": "OnVehicleExited"}
+
+
+# ── Vehicle Effects (prefabName: "Vehicle") ──────────────────────────────────
+
+def effector_enter_vehicle() -> Dict:
+    """Force the player into the vehicle. Attach to Vehicle items."""
+    return {"$type": "EnterVehicle"}
+
+
+def effector_exit_vehicle() -> Dict:
+    """Force the player out of the vehicle. Attach to Vehicle items."""
+    return {"$type": "ExitVehicle"}
+
+
+def effector_vehicle_boost(
+    duration: float = 5.0,
+    speed_of_boost: float = 200.0,
+    ramp_up_time: float = 1.0,
+    ramp_down_time: float = 1.5
+) -> Dict:
+    """
+    Apply a temporary speed boost to the vehicle.
+
+    Args:
+        duration: Total boost duration in seconds.
+        speed_of_boost: Boost speed value.
+        ramp_up_time: Seconds to reach full boost speed.
+        ramp_down_time: Seconds to return to normal speed.
+    """
+    return {
+        "$type": "VehicleBoost",
+        "duration": duration,
+        "speedOfBoost": speed_of_boost,
+        "rampUpTime": ramp_up_time,
+        "rampDownTime": ramp_down_time,
+    }
+
+
+# ── Gun Triggers (prefabName: "Gun" or "Shotgun") ────────────────────────────
+
+def trigger_gun_equipped(delay: float = 0.0) -> Dict:
+    """Player equipped the gun. ONLY works on Gun/Shotgun items.
+
+    Args:
+        delay: Delay before the trigger fires (seconds).
+    """
+    t = {"$type": "OnGunEquippedTrigger"}
+    if delay > 0:
+        t["Delay"] = delay
+    return t
+
+
+def trigger_shot_hit() -> Dict:
+    """Bullet hit a target. ONLY works on Gun/Shotgun items."""
+    return {"$type": "ShotHitTrigger"}
+
+
+def trigger_got_kill() -> Dict:
+    """Player got a kill with this gun. ONLY works on Gun/Shotgun items."""
+    return {"$type": "GotKillTrigger"}
+
+
+def trigger_started_aiming() -> Dict:
+    """Player started aiming down sights. ONLY works on Gun/Shotgun items."""
+    return {"$type": "StartedAimingTrigger"}
+
+
+def trigger_stopped_aiming() -> Dict:
+    """Player stopped aiming down sights. ONLY works on Gun/Shotgun items."""
+    return {"$type": "StoppedAimingTrigger"}
+
+
+def trigger_gun_tossed() -> Dict:
+    """Player dropped/tossed the gun. ONLY works on Gun/Shotgun items."""
+    return {"$type": "OnGunTossedTrigger"}
+
+
+# ── Gun Effects (prefabName: "Gun" or "Shotgun") ─────────────────────────────
+
+def effector_equip_gun() -> Dict:
+    """Auto-equip the gun this effect is attached to. Attach to Gun/Shotgun items."""
+    return {"$type": "EquipGunEffect"}
+
+
+def effector_toss_gun() -> Dict:
+    """Force the player to drop their equipped gun. Attach to Gun/Shotgun items."""
+    return {"$type": "TossGunEffect"}
+
+
+def effector_reset_gun() -> Dict:
+    """Reset gun state (ammo, reload). Attach to Gun/Shotgun items."""
+    return {"$type": "ResetGunEffect"}
 
 
 # ============================================================================

@@ -36,7 +36,7 @@ VALID_PREFAB_NAMES = {
     # Models
     "GLB", "GlbCollectable", "Destructible", "GLBNPC", "EnemyNPC",
     # Gameplay
-    "Trigger", "JumpPad", "Gun", "Shotgun", "9Cube",
+    "Trigger", "JumpPad", "Gun", "Shotgun", "9Cube", "Vehicle",
     # Lighting
     "Light", "BlinkLight", "SpotLight",
     # Media & Display
@@ -63,6 +63,8 @@ VALID_EFFECTS = EFFECT_TYPES | {
     "ReviveEnemy", "ResetEnemy", "AttackPlayer", "ChangeEnemyHealth", "DuplicateEnemy",
     # NPC movement
     "WalkNpcToSpot",
+    # Vehicle
+    "EnterVehicle", "ExitVehicle", "VehicleBoost",
 }
 
 # General triggers from TRIGGER_TYPES (portals_effects.py) plus item-specific triggers.

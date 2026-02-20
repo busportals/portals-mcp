@@ -41,7 +41,8 @@ Figure out which situation you're in:
 5. Player Journey — first 30 seconds, difficulty ramp, climax/finale
 6. Environment Density — detail layers per zone (structural, functional, atmospheric, decorative), hero moments, density targets. See `docs/workflows/scene-design.md`.
 7. Feedback & Juice — feedback stacks for every core action (sound + visual + camera + notification), milestone sequences, spectacle moments
-8. Audio Landscape — ambient layers per zone, zone transitions, action sounds, progression sounds, victory/defeat audio
+8. Custom UI — does the game need HUDs, scoreboards, inventory screens, mini-games, or any overlay the player sees? If yes, these are **iframes** — custom HTML/JS loaded inside the room. See `docs/reference/iframes.md`.
+9. Audio Landscape — ambient layers per zone, zone transitions, action sounds, progression sounds, victory/defeat audio
 
 After either path, write to `games/{room-id}/design.md` and get approval.
 
@@ -176,14 +177,14 @@ Load docs on demand. This section tells you exactly what exists and when to read
 **Interactions & logic** — read these when adding triggers, effects, quests, or game logic:
 - `docs/reference/interactions.md` — complete trigger/effect syntax, basic interactions vs. quest-driven tasks
 - `docs/reference/quests.md` — 3-state quest system, persistence, per-player vs. shared
-- `docs/reference/iframes.md` — bidirectional HTML/JS overlays, Portals SDK, variable interpolation, URL params, debugging
+- `docs/reference/iframes.md` — **custom UI layers** (HUDs, scoreboards, mini-games, overlays, inventory screens). Any time a user wants UI beyond notifications/text, this is the system. Bidirectional HTML/JS communication, Portals SDK, variable interpolation, URL params, debugging.
 - `docs/workflows/function-effects-reference.md` — NCalc expressions, variables, conditionals, timers, multiplayer functions
 - `docs/workflows/game-logic-board.md` — visual circuit-board diagrams for game logic
 
 **Item types** — read the relevant file when you need field schemas for a specific item type:
 - `docs/reference/items/building.md` — ResizableCube, WorldText, Portal, SpawnPoint
 - `docs/reference/items/models.md` — GLB, GlbCollectable, Destructible
-- `docs/reference/items/gameplay.md` — Trigger, JumpPad, 9Cube (elemental), Gun, Shotgun, CameraObject
+- `docs/reference/items/gameplay.md` — Trigger, JumpPad, 9Cube (elemental), Gun, Shotgun, CameraObject, Vehicle
 - `docs/reference/items/media.md` — DefaultPainting (image), DefaultVideo, PlaceableTV (screenshare)
 - `docs/reference/items/lighting.md` — Light, BlinkLight, SpotLight
 - `docs/reference/items/display.md` — Leaderboard, Chart, GLBSign (billboard)
